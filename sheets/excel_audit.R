@@ -1006,12 +1006,23 @@ build_payroll_sheet <- function(wb, sheet_name, title, data, source_info = NULL,
         } else ""
       }
     )
-  }
 
-  # Column widths
-  setColWidths(wb, sheet_name, cols = 1, widths = 35)
-  for (i in seq_along(value_cols)) {
-    setColWidths(wb, sheet_name, cols = i + 1, widths = 18)
+    # Column widths for all 3 tables
+    # TABLE 1: cols 1 to n_cols+1
+    setColWidths(wb, sheet_name, cols = 1, widths = 35)
+    for (i in seq_along(value_cols)) {
+      setColWidths(wb, sheet_name, cols = i + 1, widths = 18)
+    }
+    # TABLE 2: starts at table2_start
+    setColWidths(wb, sheet_name, cols = table2_start, widths = 35)
+    for (i in seq_along(value_cols)) {
+      setColWidths(wb, sheet_name, cols = table2_start + i, widths = 18)
+    }
+    # TABLE 3: starts at table3_start
+    setColWidths(wb, sheet_name, cols = table3_start, widths = 35)
+    for (i in seq_along(value_cols)) {
+      setColWidths(wb, sheet_name, cols = table3_start + i, widths = 18)
+    }
   }
 
   freezePane(wb, sheet_name, firstRow = TRUE, firstActiveRow = data_start + 1)

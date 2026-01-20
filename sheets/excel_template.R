@@ -214,17 +214,24 @@ WAGES_REGULAR_COLUMN_MAP <- c(
 )
 
 INACTIVITY_REASON_COLUMN_MAP <- c(
+  # From Sheet 11 column headers
   "Student" = "LF63",
+  "Looking after family / home" = "LF65",
   "Looking after family/home" = "LF65",
   "Family/Home" = "LF65",
+  "Temp sick" = "LF67",
   "Temporary sick" = "LF67",
   "Temp Sick" = "LF67",
   "Long-term sick" = "LF69",
   "Long-term Sick" = "LF69",
+  "Discouraged workers1" = "LFL8",
   "Discouraged workers" = "LFL8",
   "Discouraged" = "LFL8",
   "Retired" = "LF6B",
-  "Other" = "LF6D"
+  "Other2" = "LF6D",
+  "Other" = "LF6D",
+  # Total column
+  "Total economically inactive aged 16-64 (thousands)4" = "LF2M"
 )
 
 REDUNDANCY_COLUMN_MAP <- c(
@@ -741,76 +748,78 @@ fill_excel_template <- function(template_path,
 #   - data_start_row: row number where data begins
 
 DEFAULT_SHEET_CONFIG <- list(
-  # LFS main indicators (sheet "2" in original)
+  # ====================
+  # YOUR EXCEL SHEETS
+  # ====================
+
+  # Sheet "2" - LFS main indicators (Employment, Unemployment, Inactivity)
+  # Header row 15 has: Date, Employment level, Employment rate, Unemployment level, etc.
   "2" = list(
     source_fetcher = "fetch_lfs_source",
     column_map = "LFS_COLUMN_MAP",
-    header_row = 4,
-    data_start_row = 15
+    header_row = 15,
+    data_start_row = 16
   ),
 
-  # Vacancies
-  "Vacancies" = list(
-    source_fetcher = "fetch_vacancies_source",
-    column_map = "VACANCIES_COLUMN_MAP",
-    header_row = 13,
-    data_start_row = 14
+  # Sheet "11" - Inactivity by reason
+  # Header row 2 has: Date, Total inactivity, Student, Family/home, Temp sick, Long-term sick, etc.
+  "11" = list(
+    source_fetcher = "fetch_inactivity_source",
+    column_map = "INACTIVITY_REASON_COLUMN_MAP",
+    header_row = 2,
+    data_start_row = 10
   ),
 
-  # Payroll employees (sheet "1. Payrolled employees (UK)")
+  # Sheet "10" - Redundancies
+  # Header row 2 has: Date, People Level, Rate per thousand, Men Level, etc.
+  "10" = list(
+    source_fetcher = "fetch_redundancy_source",
+    column_map = "REDUNDANCY_COLUMN_MAP",
+    header_row = 2,
+    data_start_row = 10
+  ),
+
+  # Sheet "13" - AWE Total wages (nominal)
+  # Header row 3 has column types, source data starts around row 18
+  "13" = list(
+    source_fetcher = "fetch_wages_total_source",
+    column_map = "WAGES_TOTAL_COLUMN_MAP",
+    header_row = 3,
+    data_start_row = 18
+  ),
+
+  # Sheet "15" - AWE Regular wages (nominal)
+  "15" = list(
+    source_fetcher = "fetch_wages_regular_source",
+    column_map = "WAGES_REGULAR_COLUMN_MAP",
+    header_row = 3,
+    data_start_row = 18
+  ),
+
+  # Sheet "AWE Real_CPI" - CPI adjusted wages
+  # Header row 1 has: Date, Total Pay Real AWE, Total Pay %, Regular Pay Real AWE, etc.
+  "AWE Real_CPI" = list(
+    source_fetcher = "fetch_wages_cpi_source",
+    column_map = NULL,  # Uses combined column names from the query
+    header_row = 1,
+    data_start_row = 17
+  ),
+
+  # Sheet "1. Payrolled employees (UK)" - HMRC Payroll
+  # Header row 10 has: Date, Payrolled employees, Change on previous month
   "1. Payrolled employees (UK)" = list(
     source_fetcher = "fetch_payroll_source",
-    column_map = NULL,  # Payroll uses unit_type, handled separately
+    column_map = NULL,  # Uses unit_type from query
     header_row = 10,
     data_start_row = 11
   ),
 
-  # Industry breakdown (sheet "23. Employees Industry")
+  # Sheet "23. Employees Industry" - Industry breakdown
   "23. Employees Industry" = list(
     source_fetcher = "fetch_industry_source",
     column_map = "INDUSTRY_COLUMN_MAP",
     header_row = 13,
     data_start_row = 14
-  ),
-
-  # AWE Total wages
-  "AWE Total" = list(
-    source_fetcher = "fetch_wages_total_source",
-    column_map = "WAGES_TOTAL_COLUMN_MAP",
-    header_row = 14,
-    data_start_row = 15
-  ),
-
-  # AWE Regular wages
-  "AWE Regular" = list(
-    source_fetcher = "fetch_wages_regular_source",
-    column_map = "WAGES_REGULAR_COLUMN_MAP",
-    header_row = 14,
-    data_start_row = 15
-  ),
-
-  # AWE Real (CPI adjusted)
-  "AWE Real_CPI" = list(
-    source_fetcher = "fetch_wages_cpi_source",
-    column_map = NULL,  # Uses combined column names
-    header_row = 14,
-    data_start_row = 15
-  ),
-
-  # Inactivity by reason
-  "Inactivity" = list(
-    source_fetcher = "fetch_inactivity_source",
-    column_map = "INACTIVITY_REASON_COLUMN_MAP",
-    header_row = 14,
-    data_start_row = 15
-  ),
-
-  # Redundancies
-  "Redundancies" = list(
-    source_fetcher = "fetch_redundancy_source",
-    column_map = "REDUNDANCY_COLUMN_MAP",
-    header_row = 14,
-    data_start_row = 15
   )
 )
 

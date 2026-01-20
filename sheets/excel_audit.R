@@ -917,13 +917,13 @@ build_payroll_sheet <- function(wb, sheet_name, title, data, source_info = NULL,
         if (!is.na(row_cur)) paste0("=", col, row_cur) else ""
       },
       compare_formula_fn = function(col, row_type) {
-        comp_row <- switch(row_type,
+        comp_row <- switch(as.character(row_type),
           "2" = row_q,
           "3" = row_y,
           "4" = row_covid,
           "5" = row_election
         )
-        if (!is.na(row_cur) && !is.na(comp_row)) {
+        if (!is.null(comp_row) && !is.na(row_cur) && !is.na(comp_row)) {
           paste0("=", col, row_cur, "-", col, comp_row)
         } else ""
       }
@@ -951,12 +951,13 @@ build_payroll_sheet <- function(wb, sheet_name, title, data, source_info = NULL,
         cur_rows <- cur_rows[!is.na(cur_rows)]
 
         # Comparison 3mo avg
-        comp_rows <- switch(row_type,
+        comp_rows <- switch(as.character(row_type),
           "2" = c(row_q, row_q_m1, row_q_m2),
           "3" = c(row_y, row_y_m1, row_y_m2),
           "4" = c(row_covid),  # Single month for covid/election
           "5" = c(row_election)
         )
+        if (is.null(comp_rows)) comp_rows <- NA
         comp_rows <- comp_rows[!is.na(comp_rows)]
 
         if (length(cur_rows) > 0 && length(comp_rows) > 0) {
@@ -989,12 +990,13 @@ build_payroll_sheet <- function(wb, sheet_name, title, data, source_info = NULL,
         cur_rows <- cur_rows[!is.na(cur_rows)]
 
         # Comparison - shift by 1 month
-        comp_rows <- switch(row_type,
+        comp_rows <- switch(as.character(row_type),
           "2" = c(row_q_m1, row_q_m2, to_excel_row(find_data_row(make_payroll_label(anchor_date %m-% months(6))))),
           "3" = c(row_y_m1, row_y_m2, to_excel_row(find_data_row(make_payroll_label(anchor_date %m-% months(15))))),
           "4" = c(row_covid),
           "5" = c(row_election)
         )
+        if (is.null(comp_rows)) comp_rows <- NA
         comp_rows <- comp_rows[!is.na(comp_rows)]
 
         if (length(cur_rows) > 0 && length(comp_rows) > 0) {

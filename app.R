@@ -382,17 +382,30 @@ server <- function(input, output, session) {
   top_ten_path      <- "sheets/top_ten_stats.R"
   template_path     <- "utils/DB.docx"
 
-  status_text <- reactiveVal("Ready. Select an action above.")
+  # Check for required files at startup
+  missing_files <- c()
+  if (!file.exists(config_path)) missing_files <- c(missing_files, "config.R")
+  if (!file.exists(calculations_path)) missing_files <- c(missing_files, "calculations.R")
+  if (!file.exists(word_script_path)) missing_files <- c(missing_files, "word_output.R")
+  if (!file.exists(excel_script_path)) missing_files <- c(missing_files, "excel_audit.R")
+  if (!file.exists(template_path)) missing_files <- c(missing_files, "DB.docx (Word template)")
+
+  initial_status <- if (length(missing_files) > 0) {
+    paste("Warning: Missing files:", paste(missing_files, collapse = ", "))
+  } else {
+    "Ready. Select an action above."
+  }
+
+  status_text <- reactiveVal(initial_status)
   output$status <- renderText(status_text())
 
   # Load default manual_month from config
   observe({
     if (file.exists(config_path)) {
-      cfg <- new.env()
       tryCatch({
-        sys.source(config_path, envir = cfg)
-        if (!is.null(cfg$manual_month)) {
-          updateTextInput(session, "manual_month", value = cfg$manual_month)
+        source(config_path, local = FALSE)
+        if (exists("manual_month")) {
+          updateTextInput(session, "manual_month", value = manual_month)
         }
       }, error = function(e) NULL)
     }
@@ -406,25 +419,27 @@ server <- function(input, output, session) {
   # PREVIEW: DASHBOARD
   # =========================
   observeEvent(input$preview_dashboard, {
-    withProgress(message = "Loading Dashboard...", value = 0, {
-      status_text("Loading dashboard data...")
+    status_text("Loading dashboard data...")
 
-      env <- new.env()
-
-      incProgress(0.2, detail = "Loading configuration")
-      if (file.exists(config_path)) sys.source(config_path, envir = env)
-
-      if (nzchar(input$manual_month)) {
-        env$manual_month <- tolower(input$manual_month)
+    result <- tryCatch({
+      # Check required files
+      if (!file.exists(calculations_path)) {
+        return(list(success = FALSE, error = "calculations.R not found"))
       }
 
-      incProgress(0.5, detail = "Running calculations")
-      if (file.exists(calculations_path)) sys.source(calculations_path, envir = env)
+      # Source config and calculations in global env
+      if (file.exists(config_path)) {
+        tryCatch(source(config_path, local = FALSE), error = function(e) NULL)
+      }
 
-      incProgress(0.8, detail = "Building preview")
+      if (nzchar(input$manual_month)) {
+        manual_month <<- tolower(input$manual_month)
+      }
+
+      source(calculations_path, local = FALSE)
 
       gv <- function(name) {
-        if (exists(name, envir = env)) get(name, envir = env) else NA_real_
+        if (exists(name, inherits = TRUE)) get(name, inherits = TRUE) else NA_real_
       }
 
       # Build dashboard data with formatting info
@@ -443,44 +458,63 @@ server <- function(input, output, session) {
         list(name = "Wages (total pay, CPI adj)", cur = gv("latest_wages_cpi"), dq = gv("wages_cpi_change_q"), dy = gv("wages_cpi_change_y"), dc = gv("wages_cpi_change_covid"), de = gv("wages_cpi_change_election"), invert = FALSE, type = "wages")
       )
 
-      dashboard_data(metrics)
+      list(success = TRUE, data = metrics)
 
-      incProgress(1, detail = "Complete")
-      status_text("Dashboard preview loaded successfully.")
+    }, error = function(e) {
+      list(success = FALSE, error = e$message)
     })
+
+    if (isTRUE(result$success)) {
+      dashboard_data(result$data)
+      status_text("Dashboard preview loaded successfully.")
+    } else {
+      status_text(paste("Error loading dashboard:", result$error))
+    }
   })
 
   # =========================
   # PREVIEW: TOP TEN
   # =========================
   observeEvent(input$preview_topten, {
-    withProgress(message = "Loading Top Ten Stats...", value = 0, {
-      status_text("Loading top ten stats...")
+    status_text("Loading top ten stats...")
 
-      env <- new.env()
+    result <- tryCatch({
+      # Check required files
+      if (!file.exists(calculations_path)) {
+        return(list(success = FALSE, error = "calculations.R not found"))
+      }
+      if (!file.exists(top_ten_path)) {
+        return(list(success = FALSE, error = "top_ten_stats.R not found"))
+      }
 
-      incProgress(0.2, detail = "Loading configuration")
-      if (file.exists(config_path)) sys.source(config_path, envir = env)
+      if (file.exists(config_path)) {
+        tryCatch(source(config_path, local = FALSE), error = function(e) NULL)
+      }
 
       if (nzchar(input$manual_month)) {
-        env$manual_month <- tolower(input$manual_month)
+        manual_month <<- tolower(input$manual_month)
       }
 
-      incProgress(0.4, detail = "Running calculations")
-      if (file.exists(calculations_path)) sys.source(calculations_path, envir = env)
+      source(calculations_path, local = FALSE)
+      source(top_ten_path, local = FALSE)
 
-      incProgress(0.6, detail = "Loading top ten script")
-      if (file.exists(top_ten_path)) sys.source(top_ten_path, envir = env)
-
-      incProgress(0.8, detail = "Generating stats")
-      if (exists("generate_top_ten", envir = env)) {
-        top10 <- env$generate_top_ten()
-        topten_data(top10)
+      if (exists("generate_top_ten", inherits = TRUE)) {
+        top10 <- generate_top_ten()
+        list(success = TRUE, data = top10)
+      } else {
+        list(success = FALSE, error = "generate_top_ten function not found")
       }
 
-      incProgress(1, detail = "Complete")
-      status_text("Top ten stats loaded successfully.")
+    }, error = function(e) {
+      list(success = FALSE, error = e$message)
     })
+
+    if (isTRUE(result$success)) {
+      topten_data(result$data)
+      status_text("Top ten stats loaded successfully.")
+    } else {
+      status_text(paste("Error loading top ten:", result$error))
+    }
   })
 
   # =========================
@@ -491,22 +525,27 @@ server <- function(input, output, session) {
       paste0("Labour_Market_Briefing_", Sys.Date(), ".docx")
     },
     content = function(file) {
-      withProgress(message = "Generating Word document...", value = 0, {
-        status_text("Generating Word briefing document...")
+      status_text("Generating Word document...")
 
-        incProgress(0.2, detail = "Loading word_output.R")
-        if (file.exists(word_script_path)) {
-          sys.source(word_script_path, envir = .GlobalEnv)
+      # Check template exists
+      if (!file.exists(template_path)) {
+        status_text("Error: Word template not found at utils/DB.docx")
+        # Create a minimal error document
+        if (requireNamespace("officer", quietly = TRUE)) {
+          doc <- officer::read_docx()
+          doc <- officer::body_add_par(doc, "Error: Word template not found", style = "heading 1")
+          doc <- officer::body_add_par(doc, paste("Expected template at:", template_path))
+          doc <- officer::body_add_par(doc, "Please ensure the template file exists before generating the briefing.")
+          print(doc, target = file)
         } else {
-          stop("Cannot find ", word_script_path)
+          writeLines("Error: Word template not found and officer package not available", file)
         }
+        return()
+      }
 
-        incProgress(0.4, detail = "Preparing data")
-        if (!exists("generate_word_output", envir = .GlobalEnv)) {
-          stop("generate_word_output() not found")
-        }
+      tryCatch({
+        source(word_script_path, local = FALSE)
 
-        incProgress(0.6, detail = "Building document")
         generate_word_output(
           template_path = template_path,
           output_path = file,
@@ -518,8 +557,19 @@ server <- function(input, output, session) {
           verbose = TRUE
         )
 
-        incProgress(1, detail = "Complete")
-        status_text("Word document generated and ready for download.")
+        status_text("Word document generated successfully.")
+
+      }, error = function(e) {
+        status_text(paste("Error generating Word:", e$message))
+        # Create error document instead of failing
+        if (requireNamespace("officer", quietly = TRUE)) {
+          doc <- officer::read_docx()
+          doc <- officer::body_add_par(doc, "Error generating document", style = "heading 1")
+          doc <- officer::body_add_par(doc, paste("Error:", e$message))
+          print(doc, target = file)
+        } else {
+          writeLines(paste("Error:", e$message), file)
+        }
       })
     }
   )
@@ -532,22 +582,23 @@ server <- function(input, output, session) {
       paste0("LM_Stats_Audit_", Sys.Date(), ".xlsx")
     },
     content = function(file) {
-      withProgress(message = "Generating Excel workbook...", value = 0, {
-        status_text("Generating Excel audit workbook...")
+      status_text("Generating Excel workbook...")
 
-        incProgress(0.2, detail = "Loading excel_audit.R")
-        if (file.exists(excel_script_path)) {
-          sys.source(excel_script_path, envir = .GlobalEnv)
-        } else {
-          stop("Cannot find ", excel_script_path)
+      # Check required files exist
+      if (!file.exists(excel_script_path)) {
+        status_text("Error: Excel script not found")
+        if (requireNamespace("openxlsx", quietly = TRUE)) {
+          wb <- openxlsx::createWorkbook()
+          openxlsx::addWorksheet(wb, "Error")
+          openxlsx::writeData(wb, "Error", data.frame(Error = "Excel script not found"))
+          openxlsx::saveWorkbook(wb, file, overwrite = TRUE)
         }
+        return()
+      }
 
-        incProgress(0.4, detail = "Preparing data")
-        if (!exists("create_audit_workbook", envir = .GlobalEnv)) {
-          stop("create_audit_workbook() not found")
-        }
+      tryCatch({
+        source(excel_script_path, local = FALSE)
 
-        incProgress(0.6, detail = "Building workbook")
         create_audit_workbook(
           output_path = file,
           calculations_path = calculations_path,
@@ -555,8 +606,20 @@ server <- function(input, output, session) {
           verbose = TRUE
         )
 
-        incProgress(1, detail = "Complete")
-        status_text("Excel workbook generated and ready for download.")
+        status_text("Excel workbook generated successfully.")
+
+      }, error = function(e) {
+        status_text(paste("Error generating Excel:", e$message))
+        # Create error workbook instead of failing
+        if (requireNamespace("openxlsx", quietly = TRUE)) {
+          wb <- openxlsx::createWorkbook()
+          openxlsx::addWorksheet(wb, "Error")
+          openxlsx::writeData(wb, "Error", data.frame(
+            Error = c("Error generating workbook:", e$message),
+            stringsAsFactors = FALSE
+          ))
+          openxlsx::saveWorkbook(wb, file, overwrite = TRUE)
+        }
       })
     }
   )

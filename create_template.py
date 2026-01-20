@@ -193,7 +193,9 @@ def insert_placeholder(ws, row, col, placeholder_name, style=True):
 
 
 def clear_source_data(ws, start_row, max_col=None):
-    """Clear all data from start_row to the end of the sheet."""
+    """Clear all data, formulas, and hyperlinks from start_row to the end of the sheet."""
+    from openpyxl.cell.cell import MergedCell
+
     if max_col is None:
         max_col = ws.max_column
 
@@ -201,9 +203,21 @@ def clear_source_data(ws, start_row, max_col=None):
     for row in range(start_row, ws.max_row + 1):
         for col in range(1, max_col + 1):
             cell = ws.cell(row=row, column=col)
+            # Skip merged cells (they're read-only)
+            if isinstance(cell, MergedCell):
+                continue
+            # Clear value (including formulas)
             if cell.value is not None:
                 cell.value = None
                 cleared += 1
+            # Clear hyperlink if present
+            if cell.hyperlink is not None:
+                cell.hyperlink = None
+
+    # Also clear any array formulas in the worksheet
+    if hasattr(ws, 'array_formulae'):
+        ws.array_formulae.clear()
+
     return cleared
 
 

@@ -2,6 +2,7 @@
 # LABOUR MARKET STATISTICS BRIEF - SHINY APPLICATION
 # ==============================================================================
 # GOV.UK Design System styled application for generating Labour Market briefings
+# Uses Shiny's built-in withProgress for reliable progress indicators
 # ==============================================================================
 
 library(shiny)
@@ -20,42 +21,20 @@ ui <- fluidPage(
 
     # GOV.UK Design System CSS
     tags$style(HTML("
-      /* ============================================
-         GOV.UK Design System - Core Styles
-         ============================================ */
-
-      /* Import GDS Transport font approximation */
       @import url('https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;600;700&display=swap');
 
-      /* Reset and base */
-      *, *::before, *::after {
-        box-sizing: border-box;
-      }
-
-      html, body {
-        margin: 0;
-        padding: 0;
-        min-height: 100vh;
-      }
+      *, *::before, *::after { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; min-height: 100vh; }
 
       body {
-        font-family: 'Source Sans Pro', 'GDS Transport', Arial, sans-serif;
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
+        font-family: 'Source Sans Pro', Arial, sans-serif;
         font-size: 19px;
         line-height: 1.31579;
         color: #0b0c0c;
         background-color: #f3f2f1;
       }
 
-      /* ============================================
-         GOV.UK Header
-         ============================================ */
-
       .govuk-header {
-        font-family: 'Source Sans Pro', 'GDS Transport', Arial, sans-serif;
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
         border-bottom: 10px solid #1d70b8;
         color: #ffffff;
         background: #0b0c0c;
@@ -73,41 +52,7 @@ ui <- fluidPage(
         padding-right: 15px;
       }
 
-      @media (min-width: 40.0625em) {
-        .govuk-header__container {
-          padding-left: 30px;
-          padding-right: 30px;
-        }
-      }
-
-      .govuk-header__logo {
-        margin-bottom: 10px;
-        padding-right: 50px;
-      }
-
-      @media (min-width: 48.0625em) {
-        .govuk-header__logo {
-          width: 33.33%;
-          padding-right: 15px;
-          float: left;
-          vertical-align: top;
-        }
-      }
-
-      .govuk-header__logotype {
-        display: inline-block;
-      }
-
-      .govuk-header__logotype-crown {
-        position: relative;
-        top: -1px;
-        margin-right: 1px;
-        fill: currentColor;
-        vertical-align: top;
-      }
-
       .govuk-header__logotype-text {
-        font-family: 'Source Sans Pro', 'GDS Transport', Arial, sans-serif;
         font-weight: 700;
         font-size: 30px;
         line-height: 1;
@@ -115,207 +60,51 @@ ui <- fluidPage(
       }
 
       .govuk-header__link {
-        font-family: 'Source Sans Pro', 'GDS Transport', Arial, sans-serif;
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
         text-decoration: none;
         color: #ffffff;
-      }
-
-      .govuk-header__link:link, .govuk-header__link:visited {
-        color: #ffffff;
-      }
-
-      .govuk-header__link:hover {
-        text-decoration: underline;
-        text-decoration-thickness: 3px;
-        text-underline-offset: .1em;
-      }
-
-      .govuk-header__link:focus {
-        outline: 3px solid transparent;
-        color: #0b0c0c;
-        background-color: #ffdd00;
-        box-shadow: 0 -2px #ffdd00, 0 4px #0b0c0c;
-        text-decoration: none;
       }
 
       .govuk-header__service-name {
         display: inline-block;
         margin-bottom: 10px;
-        font-family: 'Source Sans Pro', 'GDS Transport', Arial, sans-serif;
         font-weight: 700;
-        font-size: 18px;
+        font-size: 24px;
         color: #ffffff;
       }
 
-      @media (min-width: 48.0625em) {
-        .govuk-header__service-name {
-          font-size: 24px;
-        }
-      }
-
-      /* ============================================
-         GOV.UK Main Wrapper
-         ============================================ */
-
       .govuk-width-container {
         max-width: 960px;
-        margin-left: auto;
-        margin-right: auto;
-        padding-left: 15px;
-        padding-right: 15px;
-      }
-
-      @media (min-width: 40.0625em) {
-        .govuk-width-container {
-          padding-left: 30px;
-          padding-right: 30px;
-        }
+        margin: 0 auto;
+        padding: 0 15px;
       }
 
       .govuk-main-wrapper {
-        display: block;
-        padding-top: 40px;
-        padding-bottom: 40px;
+        padding: 40px 0;
       }
-
-      @media (min-width: 40.0625em) {
-        .govuk-main-wrapper {
-          padding-top: 50px;
-          padding-bottom: 50px;
-        }
-      }
-
-      /* ============================================
-         GOV.UK Typography
-         ============================================ */
 
       .govuk-heading-xl {
-        color: #0b0c0c;
-        font-family: 'Source Sans Pro', 'GDS Transport', Arial, sans-serif;
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
         font-weight: 700;
-        font-size: 32px;
-        line-height: 1.09375;
-        margin-top: 0;
-        margin-bottom: 30px;
-      }
-
-      @media (min-width: 40.0625em) {
-        .govuk-heading-xl {
-          font-size: 48px;
-          line-height: 1.04167;
-          margin-bottom: 50px;
-        }
-      }
-
-      .govuk-heading-l {
-        color: #0b0c0c;
-        font-family: 'Source Sans Pro', 'GDS Transport', Arial, sans-serif;
-        font-weight: 700;
-        font-size: 24px;
-        line-height: 1.04167;
-        margin-top: 0;
-        margin-bottom: 20px;
-      }
-
-      @media (min-width: 40.0625em) {
-        .govuk-heading-l {
-          font-size: 36px;
-          line-height: 1.11111;
-          margin-bottom: 30px;
-        }
+        font-size: 48px;
+        margin: 0 0 50px 0;
       }
 
       .govuk-heading-m {
-        color: #0b0c0c;
-        font-family: 'Source Sans Pro', 'GDS Transport', Arial, sans-serif;
         font-weight: 700;
-        font-size: 18px;
-        line-height: 1.11111;
-        margin-top: 0;
-        margin-bottom: 15px;
+        font-size: 24px;
+        margin: 0 0 20px 0;
       }
 
-      @media (min-width: 40.0625em) {
-        .govuk-heading-m {
-          font-size: 24px;
-          line-height: 1.25;
-          margin-bottom: 20px;
-        }
+      .govuk-body {
+        font-size: 19px;
+        margin: 0 0 20px 0;
       }
-
-      .govuk-heading-s {
-        color: #0b0c0c;
-        font-family: 'Source Sans Pro', 'GDS Transport', Arial, sans-serif;
-        font-weight: 700;
-        font-size: 16px;
-        line-height: 1.25;
-        margin-top: 0;
-        margin-bottom: 15px;
-      }
-
-      @media (min-width: 40.0625em) {
-        .govuk-heading-s {
-          font-size: 19px;
-          line-height: 1.31579;
-        }
-      }
-
-      .govuk-body, .govuk-body-m {
-        color: #0b0c0c;
-        font-family: 'Source Sans Pro', 'GDS Transport', Arial, sans-serif;
-        font-size: 16px;
-        line-height: 1.25;
-        margin-top: 0;
-        margin-bottom: 15px;
-      }
-
-      @media (min-width: 40.0625em) {
-        .govuk-body, .govuk-body-m {
-          font-size: 19px;
-          line-height: 1.31579;
-          margin-bottom: 20px;
-        }
-      }
-
-      .govuk-body-s {
-        color: #0b0c0c;
-        font-family: 'Source Sans Pro', 'GDS Transport', Arial, sans-serif;
-        font-size: 14px;
-        line-height: 1.14286;
-        margin-top: 0;
-        margin-bottom: 15px;
-      }
-
-      @media (min-width: 40.0625em) {
-        .govuk-body-s {
-          font-size: 16px;
-          line-height: 1.25;
-        }
-      }
-
-      /* ============================================
-         GOV.UK Buttons
-         ============================================ */
 
       .govuk-button {
-        font-family: 'Source Sans Pro', 'GDS Transport', Arial, sans-serif;
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
         font-weight: 400;
-        font-size: 16px;
+        font-size: 19px;
         line-height: 1;
-        box-sizing: border-box;
         display: inline-block;
         position: relative;
-        width: 100%;
-        margin-top: 0;
-        margin-right: 0;
-        margin-left: 0;
-        margin-bottom: 22px;
         padding: 8px 10px 7px;
         border: 2px solid transparent;
         border-radius: 0;
@@ -323,187 +112,64 @@ ui <- fluidPage(
         background-color: #00703c;
         box-shadow: 0 2px 0 #002d18;
         text-align: center;
-        vertical-align: top;
         cursor: pointer;
-        -webkit-appearance: none;
+        margin-right: 15px;
+        margin-bottom: 15px;
       }
 
-      @media (min-width: 40.0625em) {
-        .govuk-button {
-          font-size: 19px;
-          line-height: 1;
-          width: auto;
-          margin-bottom: 32px;
-          padding: 8px 10px 7px;
-        }
-      }
-
-      .govuk-button:link, .govuk-button:visited, .govuk-button:active, .govuk-button:hover {
-        color: #ffffff;
-        text-decoration: none;
-      }
-
-      .govuk-button:hover {
-        background-color: #005a30;
-      }
-
-      .govuk-button:active {
-        top: 2px;
-        box-shadow: none;
-      }
-
+      .govuk-button:hover { background-color: #005a30; }
       .govuk-button:focus {
         border-color: #ffdd00;
         outline: 3px solid transparent;
         box-shadow: inset 0 0 0 1px #ffdd00;
+        background-color: #ffdd00;
+        color: #0b0c0c;
       }
 
-      .govuk-button:focus:not(:active):not(:hover) {
-        border-color: #ffdd00;
-        color: #0b0c0c;
-        background-color: #ffdd00;
-        box-shadow: 0 2px 0 #0b0c0c;
+      .govuk-button--blue {
+        background-color: #1d70b8;
+        box-shadow: 0 2px 0 #003078;
       }
+      .govuk-button--blue:hover { background-color: #003078; }
 
       .govuk-button--secondary {
         background-color: #f3f2f1;
         box-shadow: 0 2px 0 #929191;
         color: #0b0c0c;
       }
-
-      .govuk-button--secondary:link, .govuk-button--secondary:visited, .govuk-button--secondary:active, .govuk-button--secondary:hover {
-        color: #0b0c0c;
-      }
-
-      .govuk-button--secondary:hover {
-        background-color: #dbdad9;
-      }
-
-      .govuk-button--secondary:focus:not(:active):not(:hover) {
-        color: #0b0c0c;
-      }
+      .govuk-button--secondary:hover { background-color: #dbdad9; }
 
       .govuk-button--warning {
         background-color: #d4351c;
-        box-shadow: 0 2px 0 #55150b;
+        box-shadow: 0 2px 0 #6e1509;
       }
+      .govuk-button--warning:hover { background-color: #aa2a16; }
 
-      .govuk-button--warning:hover {
-        background-color: #aa2a16;
-      }
+      .govuk-button.shiny-download-link { text-decoration: none; }
 
-      .govuk-button--start {
-        font-weight: 700;
-        font-size: 18px;
-        line-height: 1;
-        display: inline-flex;
-        min-height: auto;
-        justify-content: center;
-      }
-
-      @media (min-width: 40.0625em) {
-        .govuk-button--start {
-          font-size: 24px;
-        }
-      }
-
-      /* Blue button variant */
-      .govuk-button--blue {
-        background-color: #1d70b8;
-        box-shadow: 0 2px 0 #003078;
-      }
-
-      .govuk-button--blue:hover {
-        background-color: #003078;
-      }
-
-      /* ============================================
-         GOV.UK Form Elements
-         ============================================ */
-
-      .govuk-form-group {
-        margin-bottom: 20px;
-      }
-
-      @media (min-width: 40.0625em) {
-        .govuk-form-group {
-          margin-bottom: 30px;
-        }
-      }
+      .govuk-form-group { margin-bottom: 30px; }
 
       .govuk-label {
-        font-family: 'Source Sans Pro', 'GDS Transport', Arial, sans-serif;
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
         font-weight: 400;
-        font-size: 16px;
-        line-height: 1.25;
-        color: #0b0c0c;
+        font-size: 19px;
         display: block;
         margin-bottom: 5px;
       }
 
-      @media (min-width: 40.0625em) {
-        .govuk-label {
-          font-size: 19px;
-          line-height: 1.31579;
-        }
-      }
-
-      .govuk-label--l {
-        font-weight: 700;
-        font-size: 24px;
-        line-height: 1.04167;
-      }
-
-      @media (min-width: 40.0625em) {
-        .govuk-label--l {
-          font-size: 36px;
-          line-height: 1.11111;
-        }
-      }
-
       .govuk-hint {
-        font-family: 'Source Sans Pro', 'GDS Transport', Arial, sans-serif;
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
-        font-weight: 400;
-        font-size: 16px;
-        line-height: 1.25;
+        font-size: 19px;
         margin-bottom: 15px;
         color: #505a5f;
       }
 
-      @media (min-width: 40.0625em) {
-        .govuk-hint {
-          font-size: 19px;
-          line-height: 1.31579;
-        }
-      }
-
       .govuk-input {
-        font-family: 'Source Sans Pro', 'GDS Transport', Arial, sans-serif;
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
-        font-weight: 400;
-        font-size: 16px;
-        line-height: 1.25;
-        box-sizing: border-box;
+        font-size: 19px;
         width: 100%;
+        max-width: 200px;
         height: 40px;
-        margin-top: 0;
         padding: 5px;
         border: 2px solid #0b0c0c;
         border-radius: 0;
-        -webkit-appearance: none;
-        appearance: none;
-      }
-
-      @media (min-width: 40.0625em) {
-        .govuk-input {
-          font-size: 19px;
-          line-height: 1.31579;
-        }
       }
 
       .govuk-input:focus {
@@ -512,289 +178,31 @@ ui <- fluidPage(
         box-shadow: inset 0 0 0 2px;
       }
 
-      .govuk-input--width-10 {
-        max-width: 23.75ex;
-      }
-
-      /* ============================================
-         GOV.UK Panel
-         ============================================ */
-
-      .govuk-panel {
-        font-family: 'Source Sans Pro', 'GDS Transport', Arial, sans-serif;
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
-        font-weight: 400;
-        font-size: 16px;
-        line-height: 1.25;
-        box-sizing: border-box;
-        margin-bottom: 15px;
-        padding: 35px;
-        border: 5px solid transparent;
-        text-align: center;
-        background: #00703c;
-        color: #ffffff;
-      }
-
-      @media (min-width: 40.0625em) {
-        .govuk-panel {
-          font-size: 19px;
-          line-height: 1.31579;
-          margin-bottom: 30px;
-          padding: 45px;
-        }
-      }
-
-      .govuk-panel__title {
-        font-family: 'Source Sans Pro', 'GDS Transport', Arial, sans-serif;
-        font-weight: 700;
-        font-size: 32px;
-        line-height: 1.09375;
-        margin-top: 0;
-        margin-bottom: 30px;
-      }
-
-      @media (min-width: 40.0625em) {
-        .govuk-panel__title {
-          font-size: 48px;
-          line-height: 1.04167;
-        }
-      }
-
-      .govuk-panel__body {
-        font-size: 24px;
-        line-height: 1.25;
-      }
-
-      @media (min-width: 40.0625em) {
-        .govuk-panel__body {
-          font-size: 36px;
-          line-height: 1.11111;
-        }
-      }
-
-      /* ============================================
-         GOV.UK Inset Text
-         ============================================ */
-
-      .govuk-inset-text {
-        font-family: 'Source Sans Pro', 'GDS Transport', Arial, sans-serif;
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
-        font-weight: 400;
-        font-size: 16px;
-        line-height: 1.25;
-        color: #0b0c0c;
-        padding: 15px;
-        margin-top: 20px;
-        margin-bottom: 20px;
-        clear: both;
-        border-left: 10px solid #b1b4b6;
-      }
-
-      @media (min-width: 40.0625em) {
-        .govuk-inset-text {
-          font-size: 19px;
-          line-height: 1.31579;
-        }
-      }
-
-      /* ============================================
-         GOV.UK Summary Card
-         ============================================ */
-
-      .govuk-summary-card {
-        margin-bottom: 20px;
-        border: 1px solid #b1b4b6;
-      }
-
-      @media (min-width: 40.0625em) {
-        .govuk-summary-card {
-          margin-bottom: 30px;
-        }
-      }
-
-      .govuk-summary-card__title-wrapper {
-        padding: 15px;
-        background-color: #f3f2f1;
+      .govuk-phase-banner {
+        padding: 10px 0;
         border-bottom: 1px solid #b1b4b6;
       }
-
-      .govuk-summary-card__title {
-        font-family: 'Source Sans Pro', 'GDS Transport', Arial, sans-serif;
-        font-weight: 700;
-        font-size: 16px;
-        line-height: 1.25;
-        margin: 0;
-        color: #0b0c0c;
-      }
-
-      @media (min-width: 40.0625em) {
-        .govuk-summary-card__title {
-          font-size: 19px;
-          line-height: 1.31579;
-        }
-      }
-
-      .govuk-summary-card__content {
-        padding: 15px;
-        background-color: #ffffff;
-      }
-
-      /* ============================================
-         GOV.UK Footer
-         ============================================ */
-
-      .govuk-footer {
-        font-family: 'Source Sans Pro', 'GDS Transport', Arial, sans-serif;
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
-        font-weight: 400;
-        font-size: 14px;
-        line-height: 1.14286;
-        padding-top: 25px;
-        padding-bottom: 15px;
-        border-top: 1px solid #b1b4b6;
-        color: #0b0c0c;
-        background: #f3f2f1;
-      }
-
-      @media (min-width: 40.0625em) {
-        .govuk-footer {
-          font-size: 16px;
-          line-height: 1.25;
-          padding-top: 40px;
-          padding-bottom: 25px;
-        }
-      }
-
-      .govuk-footer__meta {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: flex-end;
-        justify-content: center;
-      }
-
-      .govuk-footer__meta-item {
-        margin-bottom: 25px;
-      }
-
-      .govuk-footer__licence-description {
-        color: #505a5f;
-      }
-
-      /* ============================================
-         GOV.UK Table
-         ============================================ */
-
-      .govuk-table {
-        font-family: 'Source Sans Pro', 'GDS Transport', Arial, sans-serif;
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
-        font-weight: 400;
-        font-size: 16px;
-        line-height: 1.25;
-        color: #0b0c0c;
-        width: 100%;
-        margin-bottom: 20px;
-        border-spacing: 0;
-        border-collapse: collapse;
-      }
-
-      @media (min-width: 40.0625em) {
-        .govuk-table {
-          font-size: 19px;
-          line-height: 1.31579;
-          margin-bottom: 30px;
-        }
-      }
-
-      .govuk-table__head {
-        background-color: #f3f2f1;
-      }
-
-      .govuk-table__header {
-        font-weight: 700;
-        padding: 10px 20px 10px 0;
-        border-bottom: 1px solid #b1b4b6;
-        text-align: left;
-        vertical-align: top;
-      }
-
-      .govuk-table__header--numeric {
-        text-align: right;
-      }
-
-      .govuk-table__cell {
-        padding: 10px 20px 10px 0;
-        border-bottom: 1px solid #b1b4b6;
-        text-align: left;
-        vertical-align: top;
-      }
-
-      .govuk-table__cell--numeric {
-        text-align: right;
-      }
-
-      /* ============================================
-         GOV.UK Tag
-         ============================================ */
 
       .govuk-tag {
-        font-family: 'Source Sans Pro', 'GDS Transport', Arial, sans-serif;
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
         font-weight: 700;
-        font-size: 14px;
-        line-height: 1;
+        font-size: 16px;
         display: inline-block;
-        max-width: 160px;
-        margin-top: -2px;
-        margin-bottom: -3px;
         padding: 5px 8px 4px;
         color: #ffffff;
         background-color: #1d70b8;
         letter-spacing: 1px;
-        text-decoration: none;
         text-transform: uppercase;
-        overflow-wrap: break-word;
-      }
-
-      @media (min-width: 40.0625em) {
-        .govuk-tag {
-          font-size: 16px;
-        }
+        margin-right: 10px;
       }
 
       .govuk-tag--green {
-        color: #005a30;
-        background: #cce2d8;
+        background-color: #00703c;
       }
-
-      .govuk-tag--red {
-        color: #942514;
-        background: #f6d7d2;
-      }
-
-      .govuk-tag--yellow {
-        color: #594d00;
-        background: #fff7bf;
-      }
-
-      .govuk-tag--grey {
-        color: #383f43;
-        background: #eeefef;
-      }
-
-      /* ============================================
-         Custom Dashboard Styles
-         ============================================ */
 
       .dashboard-card {
         background-color: #ffffff;
         border: 1px solid #b1b4b6;
         margin-bottom: 20px;
-        border-radius: 0;
       }
 
       .dashboard-card__header {
@@ -805,65 +213,99 @@ ui <- fluidPage(
         font-size: 19px;
       }
 
-      .dashboard-card__content {
-        padding: 20px;
+      .dashboard-card__content { padding: 20px; }
+
+      .govuk-section-break {
+        margin: 30px 0;
+        border: 0;
+        border-bottom: 1px solid #b1b4b6;
       }
 
+      .govuk-grid-row {
+        display: flex;
+        flex-wrap: wrap;
+        margin: 0 -15px;
+      }
+
+      .govuk-grid-column-one-half {
+        width: 50%;
+        padding: 0 15px;
+      }
+
+      @media (max-width: 768px) {
+        .govuk-grid-column-one-half { width: 100%; }
+      }
+
+      .govuk-footer {
+        padding: 25px 0;
+        border-top: 1px solid #b1b4b6;
+        background: #f3f2f1;
+        text-align: center;
+        color: #505a5f;
+      }
+
+      .container-fluid { padding: 0 !important; margin: 0 !important; max-width: none !important; }
+
+      /* Month confirmation status */
+      .month-status {
+        display: inline-block;
+        padding: 5px 10px;
+        margin-left: 10px;
+        font-size: 16px;
+        border-radius: 3px;
+      }
+
+      .month-status--confirmed {
+        background-color: #00703c;
+        color: #ffffff;
+      }
+
+      .month-status--pending {
+        background-color: #f47738;
+        color: #ffffff;
+      }
+
+      /* Input row with button */
+      .input-row {
+        display: flex;
+        align-items: flex-end;
+        gap: 15px;
+        flex-wrap: wrap;
+      }
+
+      .input-row .govuk-form-group {
+        margin-bottom: 0;
+      }
+
+      /* Stats table */
       .stats-table {
         width: 100%;
         border-collapse: collapse;
         font-size: 14px;
       }
 
-      @media (min-width: 40.0625em) {
-        .stats-table {
-          font-size: 16px;
-        }
-      }
-
       .stats-table th {
         background-color: #0b0c0c;
         color: #ffffff;
         font-weight: 700;
-        padding: 12px 10px;
+        padding: 10px 8px;
         text-align: left;
         border: 1px solid #0b0c0c;
         font-size: 12px;
       }
 
-      @media (min-width: 40.0625em) {
-        .stats-table th {
-          font-size: 14px;
-        }
-      }
-
       .stats-table td {
-        padding: 10px;
+        padding: 8px;
         border: 1px solid #b1b4b6;
         background-color: #ffffff;
       }
 
-      .stats-table tr:nth-child(even) td {
-        background-color: #f8f8f8;
-      }
+      .stats-table tr:nth-child(even) td { background-color: #f8f8f8; }
+      .stats-table tr:hover td { background-color: #f3f2f1; }
 
-      .stats-table tr:hover td {
-        background-color: #f3f2f1;
-      }
-
-      .stat-positive {
-        color: #00703c;
-        font-weight: 700;
-      }
-
-      .stat-negative {
-        color: #d4351c;
-        font-weight: 700;
-      }
-
-      .stat-neutral {
-        color: #505a5f;
-      }
+      .stat-positive { color: #00703c; font-weight: 700; }
+      .stat-negative { color: #d4351c; font-weight: 700; }
+      .stat-neutral { color: #505a5f; }
 
       /* Top Ten List */
       .top-ten-list {
@@ -874,396 +316,150 @@ ui <- fluidPage(
       }
 
       .top-ten-list li {
-        padding: 15px 15px 15px 55px;
-        margin-bottom: 10px;
+        padding: 12px 12px 12px 50px;
+        margin-bottom: 8px;
         background-color: #ffffff;
-        border-left: 5px solid #1d70b8;
+        border-left: 4px solid #1d70b8;
         position: relative;
-        font-size: 16px;
-        line-height: 1.5;
-      }
-
-      @media (min-width: 40.0625em) {
-        .top-ten-list li {
-          font-size: 18px;
-        }
+        font-size: 15px;
+        line-height: 1.4;
       }
 
       .top-ten-list li::before {
         counter-increment: item;
         content: counter(item);
         position: absolute;
-        left: 15px;
-        top: 15px;
+        left: 12px;
+        top: 12px;
         font-weight: 700;
-        font-size: 20px;
+        font-size: 18px;
         color: #1d70b8;
-        width: 30px;
-        text-align: center;
       }
 
-      /* Button Group */
-      .govuk-button-group {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 15px;
-        margin-bottom: 20px;
+      .govuk-list { padding-left: 20px; }
+      .govuk-list li { margin-bottom: 5px; }
+
+      /* Shiny progress bar customization */
+      .shiny-notification {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 400px;
+        background: #ffffff;
+        border: 3px solid #1d70b8;
+        border-radius: 0;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        padding: 20px;
+        z-index: 99999;
       }
 
-      @media (min-width: 40.0625em) {
-        .govuk-button-group {
-          flex-direction: row;
-          flex-wrap: wrap;
-          margin-bottom: 30px;
-        }
-
-        .govuk-button-group .govuk-button {
-          margin-bottom: 17px;
-          margin-right: 15px;
-        }
-      }
-
-      /* Two column grid */
-      .govuk-grid-row {
-        display: flex;
-        flex-wrap: wrap;
-        margin-right: -15px;
-        margin-left: -15px;
-      }
-
-      .govuk-grid-column-one-half {
-        box-sizing: border-box;
-        width: 100%;
-        padding: 0 15px;
-      }
-
-      @media (min-width: 48.0625em) {
-        .govuk-grid-column-one-half {
-          width: 50%;
-        }
-      }
-
-      .govuk-grid-column-full {
-        box-sizing: border-box;
-        width: 100%;
-        padding: 0 15px;
-      }
-
-      /* Phase Banner */
-      .govuk-phase-banner {
-        padding-top: 10px;
-        padding-bottom: 10px;
-        border-bottom: 1px solid #b1b4b6;
-      }
-
-      .govuk-phase-banner__content {
-        font-family: 'Source Sans Pro', 'GDS Transport', Arial, sans-serif;
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
-        font-weight: 400;
-        font-size: 14px;
-        line-height: 1.14286;
-        color: #0b0c0c;
-        display: table;
-        margin: 0;
-      }
-
-      @media (min-width: 40.0625em) {
-        .govuk-phase-banner__content {
-          font-size: 16px;
-          line-height: 1.25;
-        }
-      }
-
-      .govuk-phase-banner__content__tag {
-        margin-right: 10px;
-      }
-
-      .govuk-phase-banner__text {
-        display: table-cell;
-        vertical-align: middle;
-      }
-
-      /* Notification Banner */
-      .govuk-notification-banner {
-        font-family: 'Source Sans Pro', 'GDS Transport', Arial, sans-serif;
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
-        font-weight: 400;
+      .shiny-notification-message {
+        font-family: 'Source Sans Pro', Arial, sans-serif;
         font-size: 16px;
-        line-height: 1.25;
-        margin-bottom: 30px;
-        border: 5px solid #1d70b8;
-        background-color: #1d70b8;
-      }
-
-      @media (min-width: 40.0625em) {
-        .govuk-notification-banner {
-          font-size: 19px;
-          line-height: 1.31579;
-        }
-      }
-
-      .govuk-notification-banner__header {
-        padding: 2px 15px 5px;
-        border-bottom: 1px solid transparent;
-      }
-
-      @media (min-width: 40.0625em) {
-        .govuk-notification-banner__header {
-          padding: 2px 20px 5px;
-        }
-      }
-
-      .govuk-notification-banner__title {
-        font-family: 'Source Sans Pro', 'GDS Transport', Arial, sans-serif;
-        font-weight: 700;
-        font-size: 16px;
-        line-height: 1.25;
-        color: #ffffff;
-        margin: 0;
-        padding: 0;
-      }
-
-      @media (min-width: 40.0625em) {
-        .govuk-notification-banner__title {
-          font-size: 19px;
-          line-height: 1.31579;
-        }
-      }
-
-      .govuk-notification-banner__content {
         color: #0b0c0c;
-        padding: 15px;
-        background-color: #ffffff;
+        margin-bottom: 15px;
       }
 
-      @media (min-width: 40.0625em) {
-        .govuk-notification-banner__content {
-          padding: 20px;
-        }
+      .shiny-notification .progress {
+        height: 10px;
+        background-color: #f3f2f1;
+        border-radius: 0;
+        margin-top: 10px;
       }
 
-      .govuk-notification-banner--success {
-        border-color: #00703c;
+      .shiny-notification .progress-bar {
         background-color: #00703c;
+        border-radius: 0;
       }
 
-      .govuk-notification-banner--success .govuk-notification-banner__header {
-        background-color: #00703c;
-      }
-
-      /* Loading state */
-      .loading-spinner {
-        display: inline-block;
-        width: 20px;
-        height: 20px;
-        border: 2px solid #ffffff;
-        border-radius: 50%;
-        border-top-color: transparent;
-        animation: spin 1s linear infinite;
-      }
-
-      @keyframes spin {
-        to { transform: rotate(360deg); }
-      }
-
-      /* Fix Shiny download button styling */
-      .govuk-button.shiny-download-link {
-        text-decoration: none;
-      }
-
-      /* Status box styles */
-      .status-ready {
-        border-left-color: #1d70b8;
-        background-color: #ffffff;
-      }
-
-      .status-loading {
-        border-left-color: #f47738;
-        background-color: #fef7f4;
-      }
-
-      .status-success {
-        border-left-color: #00703c;
-        background-color: #f4f9f6;
-      }
-
-      .status-error {
-        border-left-color: #d4351c;
-        background-color: #fef6f5;
-      }
-
-      /* Section spacing */
-      .govuk-section-break {
-        margin: 0;
-        border: 0;
-      }
-
-      .govuk-section-break--xl {
-        margin-top: 30px;
-        margin-bottom: 30px;
-      }
-
-      @media (min-width: 40.0625em) {
-        .govuk-section-break--xl {
-          margin-top: 50px;
-          margin-bottom: 50px;
-        }
-      }
-
-      .govuk-section-break--visible {
-        border-bottom: 1px solid #b1b4b6;
-      }
-
-      /* Visually hidden */
-      .govuk-visually-hidden {
-        position: absolute !important;
-        width: 1px !important;
-        height: 1px !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        overflow: hidden !important;
-        clip: rect(0 0 0 0) !important;
-        -webkit-clip-path: inset(50%) !important;
-        clip-path: inset(50%) !important;
-        border: 0 !important;
-        white-space: nowrap !important;
-      }
-
-      /* Remove default Shiny container padding */
-      .container-fluid {
-        padding: 0 !important;
-        margin: 0 !important;
-        max-width: none !important;
+      .shiny-notification-close {
+        display: none;
       }
     "))
   ),
 
-  # GOV.UK Header
-  tags$header(class = "govuk-header", role = "banner", `data-module` = "govuk-header",
-    div(class = "govuk-header__container govuk-width-container",
-      div(class = "govuk-header__logo",
-        a(href = "#", class = "govuk-header__link govuk-header__link--homepage",
-          span(class = "govuk-header__logotype",
-            span(class = "govuk-header__logotype-text", "GOV.UK")
-          )
+  # Header
+  tags$header(class = "govuk-header",
+    div(class = "govuk-header__container",
+      div(style = "margin-bottom: 10px;",
+        a(href = "#", class = "govuk-header__link",
+          span(class = "govuk-header__logotype-text", "GOV.UK")
         )
       ),
-      div(class = "govuk-header__content",
-        span(class = "govuk-header__service-name", "Labour Market Statistics Brief")
-      )
+      span(class = "govuk-header__service-name", "Labour Market Statistics Brief")
     )
   ),
 
   # Main Content
   div(class = "govuk-width-container",
 
-    # Phase banner
     div(class = "govuk-phase-banner",
-      p(class = "govuk-phase-banner__content",
-        tags$strong(class = "govuk-tag govuk-phase-banner__content__tag", "BETA"),
-        span(class = "govuk-phase-banner__text",
-          "This is a new service. Please report any issues to the team."
-        )
-      )
+      span(class = "govuk-tag", "BETA"),
+      span("This is a new service.")
     ),
 
-    tags$main(class = "govuk-main-wrapper", id = "main-content", role = "main",
+    tags$main(class = "govuk-main-wrapper",
 
-      # Page heading
       h1(class = "govuk-heading-xl", "Labour Market Statistics Brief Generator"),
 
-      # Configuration card
+      # Configuration
       div(class = "dashboard-card",
         div(class = "dashboard-card__header", "Configuration"),
         div(class = "dashboard-card__content",
-          div(class = "govuk-form-group",
-            tags$label(class = "govuk-label", `for` = "manual_month",
-              "Reference month"
+          div(class = "input-row",
+            div(class = "govuk-form-group",
+              tags$label(class = "govuk-label", `for` = "manual_month", "Reference month"),
+              div(class = "govuk-hint", "Format: dec2025"),
+              tags$input(class = "govuk-input", id = "manual_month", name = "manual_month", type = "text")
             ),
-            tags$div(id = "manual_month-hint", class = "govuk-hint",
-              "Enter the reference month in format: dec2025 or 2025-12"
-            ),
-            tags$input(
-              class = "govuk-input govuk-input--width-10",
-              id = "manual_month",
-              name = "manual_month",
-              type = "text",
-              `aria-describedby` = "manual_month-hint"
-            )
-          )
+            actionButton("confirm_month", "Confirm Month", class = "govuk-button govuk-button--warning",
+                         style = "margin-bottom: 0;")
+          ),
+          uiOutput("month_status")
         )
       ),
 
-      # Actions card
+      # Actions
       div(class = "dashboard-card",
         div(class = "dashboard-card__header", "Actions"),
         div(class = "dashboard-card__content",
           h2(class = "govuk-heading-m", "Preview Data"),
-          p(class = "govuk-body", "Load and preview the labour market statistics before generating documents."),
-          div(class = "govuk-button-group",
-            actionButton("preview_dashboard", "Preview Dashboard",
-                        class = "govuk-button govuk-button--blue"),
-            actionButton("preview_topten", "Preview Top Ten Stats",
-                        class = "govuk-button govuk-button--blue")
-          ),
+          p(class = "govuk-body", "Load and preview statistics before generating documents."),
+          actionButton("preview_dashboard", "Preview Dashboard", class = "govuk-button govuk-button--blue"),
+          actionButton("preview_topten", "Preview Top Ten Stats", class = "govuk-button govuk-button--blue"),
 
-          hr(class = "govuk-section-break govuk-section-break--xl govuk-section-break--visible"),
+          tags$hr(class = "govuk-section-break"),
 
           h2(class = "govuk-heading-m", "Download Documents"),
-          p(class = "govuk-body", "Generate and download the briefing documents."),
-          div(class = "govuk-button-group",
-            downloadButton("download_word", "Download Word Document",
-                          class = "govuk-button"),
-            downloadButton("download_excel", "Download Excel Workbook",
-                          class = "govuk-button govuk-button--secondary")
-          )
+          p(class = "govuk-body", "Generate and download briefing documents."),
+          downloadButton("download_word", "Download Word Document", class = "govuk-button"),
+          downloadButton("download_excel", "Download Excel Workbook", class = "govuk-button govuk-button--secondary")
         )
       ),
 
-      # Status notification
-      uiOutput("status_banner"),
-
-      # Preview sections in two columns
+      # Preview sections
       div(class = "govuk-grid-row",
-
-        # Dashboard preview
         div(class = "govuk-grid-column-one-half",
           div(class = "dashboard-card",
             div(class = "dashboard-card__header", "Dashboard Preview"),
-            div(class = "dashboard-card__content",
-              uiOutput("dashboard_preview")
-            )
+            div(class = "dashboard-card__content", uiOutput("dashboard_preview"))
           )
         ),
-
-        # Top Ten preview
         div(class = "govuk-grid-column-one-half",
           div(class = "dashboard-card",
             div(class = "dashboard-card__header", "Top Ten Statistics Preview"),
-            div(class = "dashboard-card__content",
-              uiOutput("topten_preview")
-            )
+            div(class = "dashboard-card__content", uiOutput("topten_preview"))
           )
         )
       )
     )
   ),
 
-  # GOV.UK Footer
-  tags$footer(class = "govuk-footer", role = "contentinfo",
+  # Footer
+  tags$footer(class = "govuk-footer",
     div(class = "govuk-width-container",
-      div(class = "govuk-footer__meta",
-        div(class = "govuk-footer__meta-item",
-          span(class = "govuk-footer__licence-description",
-            "Labour Market Statistics Brief Generator",
-            tags$br(),
-            "Department for Business and Trade"
-          )
-        )
-      )
+      "Labour Market Statistics Brief Generator | Department for Business and Trade"
     )
   )
 )
@@ -1284,24 +480,9 @@ server <- function(input, output, session) {
   template_path     <- "utils/DB.docx"
 
   # Reactive values
-  status_text <- reactiveVal("Ready")
-  status_type <- reactiveVal("ready")
   dashboard_data <- reactiveVal(NULL)
   topten_data <- reactiveVal(NULL)
-
-  # Check required files on startup
-  observe({
-    missing <- character(0)
-    if (!file.exists(config_path)) missing <- c(missing, "config.R")
-    if (!file.exists(calculations_path)) missing <- c(missing, "calculations.R")
-    if (!file.exists(word_script_path)) missing <- c(missing, "word_output.R")
-    if (!file.exists(excel_script_path)) missing <- c(missing, "excel_audit.R")
-
-    if (length(missing) > 0) {
-      status_text(paste("Warning: Missing files:", paste(missing, collapse = ", ")))
-      status_type("error")
-    }
-  })
+  confirmed_month <- reactiveVal(NULL)
 
   # Load default month from config
   observe({
@@ -1317,35 +498,41 @@ server <- function(input, output, session) {
   })
 
   # ============================================================================
-  # STATUS BANNER
+  # CONFIRM MONTH BUTTON
   # ============================================================================
 
-  output$status_banner <- renderUI({
-    st <- status_text()
-    tp <- status_type()
-
-    banner_class <- switch(tp,
-      "success" = "govuk-notification-banner govuk-notification-banner--success",
-      "error" = "govuk-notification-banner",
-      "loading" = "govuk-notification-banner",
-      "govuk-notification-banner"
-    )
-
-    title_text <- switch(tp,
-      "success" = "Success",
-      "error" = "Warning",
-      "loading" = "Loading",
-      "Status"
-    )
-
-    div(class = banner_class, role = "region", `aria-labelledby` = "status-banner-title",
-      div(class = "govuk-notification-banner__header",
-        h2(class = "govuk-notification-banner__title", id = "status-banner-title", title_text)
-      ),
-      div(class = "govuk-notification-banner__content",
-        p(class = "govuk-body", st)
+  observeEvent(input$confirm_month, {
+    month_val <- input$manual_month
+    if (nzchar(month_val)) {
+      confirmed_month(tolower(month_val))
+      showNotification(
+        paste("Month confirmed:", tolower(month_val)),
+        type = "message",
+        duration = 3
       )
-    )
+    } else {
+      showNotification(
+        "Please enter a month value first (e.g., dec2025)",
+        type = "warning",
+        duration = 3
+      )
+    }
+  })
+
+  # Month status display
+  output$month_status <- renderUI({
+    cm <- confirmed_month()
+    if (!is.null(cm)) {
+      div(style = "margin-top: 15px;",
+        span(class = "govuk-tag govuk-tag--green", "CONFIRMED"),
+        span(style = "margin-left: 10px; font-weight: 600;", paste("Reference month:", cm))
+      )
+    } else {
+      div(style = "margin-top: 15px;",
+        span(class = "govuk-tag", style = "background-color: #f47738;", "PENDING"),
+        span(style = "margin-left: 10px; color: #505a5f;", "Click 'Confirm Month' to set the reference month")
+      )
+    }
   })
 
   # ============================================================================
@@ -1353,32 +540,48 @@ server <- function(input, output, session) {
   # ============================================================================
 
   observeEvent(input$preview_dashboard, {
-    status_text("Loading dashboard data...")
-    status_type("loading")
 
-    result <- tryCatch({
-      # Check files exist
+    withProgress(message = "Loading Dashboard Data", value = 0, {
+
+      incProgress(0.1, detail = "Step 1/6: Checking configuration files...")
+      Sys.sleep(0.3)
+
       if (!file.exists(calculations_path)) {
-        return(list(success = FALSE, error = "calculations.R not found"))
+        showNotification("Error: calculations.R not found", type = "error")
+        return()
       }
 
-      # Create isolated environment for sourcing
+      incProgress(0.15, detail = "Step 2/6: Loading configuration...")
+      Sys.sleep(0.2)
+
       calc_env <- new.env(parent = globalenv())
 
-      # Source config
       if (file.exists(config_path)) {
         source(config_path, local = calc_env)
       }
 
-      # Override manual_month if provided
-      if (nzchar(input$manual_month)) {
+      incProgress(0.15, detail = "Step 3/6: Setting reference month...")
+      Sys.sleep(0.2)
+
+      cm <- confirmed_month()
+      if (!is.null(cm)) {
+        calc_env$manual_month <- cm
+      } else if (nzchar(input$manual_month)) {
         calc_env$manual_month <- tolower(input$manual_month)
       }
 
-      # Source calculations
-      source(calculations_path, local = calc_env)
+      incProgress(0.2, detail = "Step 4/6: Running calculations...")
 
-      # Helper function to get values safely
+      tryCatch({
+        source(calculations_path, local = calc_env)
+      }, error = function(e) {
+        showNotification(paste("Calculation error:", e$message), type = "error", duration = 5)
+        return()
+      })
+
+      incProgress(0.2, detail = "Step 5/6: Building metrics table...")
+      Sys.sleep(0.2)
+
       gv <- function(name) {
         if (exists(name, envir = calc_env)) {
           val <- get(name, envir = calc_env)
@@ -1387,108 +590,28 @@ server <- function(input, output, session) {
         NA_real_
       }
 
-      # Build metrics list
       metrics <- list(
-        list(name = "Employment 16+ (000s)",
-             cur = gv("emp16_cur") / 1000,
-             dq = gv("emp16_dq") / 1000,
-             dy = gv("emp16_dy") / 1000,
-             dc = gv("emp16_dc") / 1000,
-             de = gv("emp16_de") / 1000,
-             invert = FALSE, type = "count"),
-        list(name = "Employment rate 16-64 (%)",
-             cur = gv("emp_rt_cur"),
-             dq = gv("emp_rt_dq"),
-             dy = gv("emp_rt_dy"),
-             dc = gv("emp_rt_dc"),
-             de = gv("emp_rt_de"),
-             invert = FALSE, type = "rate"),
-        list(name = "Unemployment 16+ (000s)",
-             cur = gv("unemp16_cur") / 1000,
-             dq = gv("unemp16_dq") / 1000,
-             dy = gv("unemp16_dy") / 1000,
-             dc = gv("unemp16_dc") / 1000,
-             de = gv("unemp16_de") / 1000,
-             invert = TRUE, type = "count"),
-        list(name = "Unemployment rate 16+ (%)",
-             cur = gv("unemp_rt_cur"),
-             dq = gv("unemp_rt_dq"),
-             dy = gv("unemp_rt_dy"),
-             dc = gv("unemp_rt_dc"),
-             de = gv("unemp_rt_de"),
-             invert = TRUE, type = "rate"),
-        list(name = "Inactivity 16-64 (000s)",
-             cur = gv("inact_cur") / 1000,
-             dq = gv("inact_dq") / 1000,
-             dy = gv("inact_dy") / 1000,
-             dc = gv("inact_dc") / 1000,
-             de = gv("inact_de") / 1000,
-             invert = TRUE, type = "count"),
-        list(name = "Inactivity 50-64 (000s)",
-             cur = gv("inact5064_cur") / 1000,
-             dq = gv("inact5064_dq") / 1000,
-             dy = gv("inact5064_dy") / 1000,
-             dc = gv("inact5064_dc") / 1000,
-             de = gv("inact5064_de") / 1000,
-             invert = TRUE, type = "count"),
-        list(name = "Inactivity rate 16-64 (%)",
-             cur = gv("inact_rt_cur"),
-             dq = gv("inact_rt_dq"),
-             dy = gv("inact_rt_dy"),
-             dc = gv("inact_rt_dc"),
-             de = gv("inact_rt_de"),
-             invert = TRUE, type = "rate"),
-        list(name = "Inactivity rate 50-64 (%)",
-             cur = gv("inact5064_rt_cur"),
-             dq = gv("inact5064_rt_dq"),
-             dy = gv("inact5064_rt_dy"),
-             dc = gv("inact5064_rt_dc"),
-             de = gv("inact5064_rt_de"),
-             invert = TRUE, type = "rate"),
-        list(name = "Vacancies (000s)",
-             cur = gv("vac_cur"),
-             dq = gv("vac_dq"),
-             dy = gv("vac_dy"),
-             dc = gv("vac_dc"),
-             de = gv("vac_de"),
-             invert = NA, type = "exempt"),
-        list(name = "Payroll employees (000s)",
-             cur = gv("payroll_cur"),
-             dq = gv("payroll_dq"),
-             dy = gv("payroll_dy"),
-             dc = gv("payroll_dc"),
-             de = gv("payroll_de"),
-             invert = FALSE, type = "exempt"),
-        list(name = "Wages total pay (%)",
-             cur = gv("latest_wages"),
-             dq = gv("wages_change_q"),
-             dy = gv("wages_change_y"),
-             dc = gv("wages_change_covid"),
-             de = gv("wages_change_election"),
-             invert = FALSE, type = "wages"),
-        list(name = "Wages CPI-adjusted (%)",
-             cur = gv("latest_wages_cpi"),
-             dq = gv("wages_cpi_change_q"),
-             dy = gv("wages_cpi_change_y"),
-             dc = gv("wages_cpi_change_covid"),
-             de = gv("wages_cpi_change_election"),
-             invert = FALSE, type = "wages")
+        list(name = "Employment 16+ (000s)", cur = gv("emp16_cur") / 1000, dq = gv("emp16_dq") / 1000, dy = gv("emp16_dy") / 1000, dc = gv("emp16_dc") / 1000, de = gv("emp16_de") / 1000, invert = FALSE, type = "count"),
+        list(name = "Employment rate 16-64 (%)", cur = gv("emp_rt_cur"), dq = gv("emp_rt_dq"), dy = gv("emp_rt_dy"), dc = gv("emp_rt_dc"), de = gv("emp_rt_de"), invert = FALSE, type = "rate"),
+        list(name = "Unemployment 16+ (000s)", cur = gv("unemp16_cur") / 1000, dq = gv("unemp16_dq") / 1000, dy = gv("unemp16_dy") / 1000, dc = gv("unemp16_dc") / 1000, de = gv("unemp16_de") / 1000, invert = TRUE, type = "count"),
+        list(name = "Unemployment rate 16+ (%)", cur = gv("unemp_rt_cur"), dq = gv("unemp_rt_dq"), dy = gv("unemp_rt_dy"), dc = gv("unemp_rt_dc"), de = gv("unemp_rt_de"), invert = TRUE, type = "rate"),
+        list(name = "Inactivity 16-64 (000s)", cur = gv("inact_cur") / 1000, dq = gv("inact_dq") / 1000, dy = gv("inact_dy") / 1000, dc = gv("inact_dc") / 1000, de = gv("inact_de") / 1000, invert = TRUE, type = "count"),
+        list(name = "Inactivity 50-64 (000s)", cur = gv("inact5064_cur") / 1000, dq = gv("inact5064_dq") / 1000, dy = gv("inact5064_dy") / 1000, dc = gv("inact5064_dc") / 1000, de = gv("inact5064_de") / 1000, invert = TRUE, type = "count"),
+        list(name = "Inactivity rate 16-64 (%)", cur = gv("inact_rt_cur"), dq = gv("inact_rt_dq"), dy = gv("inact_rt_dy"), dc = gv("inact_rt_dc"), de = gv("inact_rt_de"), invert = TRUE, type = "rate"),
+        list(name = "Inactivity rate 50-64 (%)", cur = gv("inact5064_rt_cur"), dq = gv("inact5064_rt_dq"), dy = gv("inact5064_rt_dy"), dc = gv("inact5064_rt_dc"), de = gv("inact5064_rt_de"), invert = TRUE, type = "rate"),
+        list(name = "Vacancies (000s)", cur = gv("vac_cur"), dq = gv("vac_dq"), dy = gv("vac_dy"), dc = gv("vac_dc"), de = gv("vac_de"), invert = NA, type = "exempt"),
+        list(name = "Payroll employees (000s)", cur = gv("payroll_cur"), dq = gv("payroll_dq"), dy = gv("payroll_dy"), dc = gv("payroll_dc"), de = gv("payroll_de"), invert = FALSE, type = "exempt"),
+        list(name = "Wages total pay (%)", cur = gv("latest_wages"), dq = gv("wages_change_q"), dy = gv("wages_change_y"), dc = gv("wages_change_covid"), de = gv("wages_change_election"), invert = FALSE, type = "wages"),
+        list(name = "Wages CPI-adjusted (%)", cur = gv("latest_wages_cpi"), dq = gv("wages_cpi_change_q"), dy = gv("wages_cpi_change_y"), dc = gv("wages_cpi_change_covid"), de = gv("wages_cpi_change_election"), invert = FALSE, type = "wages")
       )
 
-      list(success = TRUE, data = metrics)
+      incProgress(0.2, detail = "Step 6/6: Finalizing dashboard...")
+      Sys.sleep(0.2)
 
-    }, error = function(e) {
-      list(success = FALSE, error = e$message)
+      dashboard_data(metrics)
     })
 
-    if (isTRUE(result$success)) {
-      dashboard_data(result$data)
-      status_text("Dashboard data loaded successfully")
-      status_type("success")
-    } else {
-      status_text(paste("Error loading dashboard:", result$error))
-      status_type("error")
-    }
+    showNotification("Dashboard loaded successfully!", type = "message", duration = 3)
   })
 
   # ============================================================================
@@ -1496,54 +619,64 @@ server <- function(input, output, session) {
   # ============================================================================
 
   observeEvent(input$preview_topten, {
-    status_text("Loading top ten statistics...")
-    status_type("loading")
 
-    result <- tryCatch({
-      # Check files exist
+    withProgress(message = "Loading Top Ten Statistics", value = 0, {
+
+      incProgress(0.1, detail = "Step 1/6: Checking required files...")
+      Sys.sleep(0.3)
+
       if (!file.exists(calculations_path)) {
-        return(list(success = FALSE, error = "calculations.R not found"))
-      }
-      if (!file.exists(top_ten_path)) {
-        return(list(success = FALSE, error = "top_ten_stats.R not found"))
+        showNotification("Error: calculations.R not found", type = "error")
+        return()
       }
 
-      # Source config first
+      if (!file.exists(top_ten_path)) {
+        showNotification("Error: top_ten_stats.R not found", type = "error")
+        return()
+      }
+
+      incProgress(0.15, detail = "Step 2/6: Loading configuration...")
+      Sys.sleep(0.2)
+
       if (file.exists(config_path)) {
         source(config_path, local = FALSE)
       }
 
-      # Override manual_month if provided
-      if (nzchar(input$manual_month)) {
+      incProgress(0.15, detail = "Step 3/6: Setting reference month...")
+      Sys.sleep(0.2)
+
+      cm <- confirmed_month()
+      if (!is.null(cm)) {
+        manual_month <<- cm
+      } else if (nzchar(input$manual_month)) {
         manual_month <<- tolower(input$manual_month)
       }
 
-      # Source calculations (populates global env with variables)
-      source(calculations_path, local = FALSE)
+      incProgress(0.2, detail = "Step 4/6: Running calculations...")
 
-      # Source top ten
+      tryCatch({
+        source(calculations_path, local = FALSE)
+      }, error = function(e) {
+        showNotification(paste("Calculation error:", e$message), type = "error", duration = 5)
+        return()
+      })
+
+      incProgress(0.2, detail = "Step 5/6: Loading top ten generator...")
+
       source(top_ten_path, local = FALSE)
 
-      # Generate top ten
+      incProgress(0.2, detail = "Step 6/6: Generating statistics...")
+
       if (exists("generate_top_ten")) {
         top10 <- generate_top_ten()
-        list(success = TRUE, data = top10)
+        topten_data(top10)
       } else {
-        list(success = FALSE, error = "generate_top_ten function not found")
+        showNotification("Error: generate_top_ten function not found", type = "error")
+        return()
       }
-
-    }, error = function(e) {
-      list(success = FALSE, error = e$message)
     })
 
-    if (isTRUE(result$success)) {
-      topten_data(result$data)
-      status_text("Top ten statistics loaded successfully")
-      status_type("success")
-    } else {
-      status_text(paste("Error loading top ten:", result$error))
-      status_type("error")
-    }
+    showNotification("Top Ten statistics loaded successfully!", type = "message", duration = 3)
   })
 
   # ============================================================================
@@ -1555,150 +688,103 @@ server <- function(input, output, session) {
       paste0("Labour_Market_Brief_", format(Sys.Date(), "%Y-%m-%d"), ".docx")
     },
     content = function(file) {
-      status_text("Generating Word document...")
-      status_type("loading")
 
-      # Check for officer package
-      if (!requireNamespace("officer", quietly = TRUE)) {
-        status_text("Error: officer package not installed")
-        status_type("error")
-        # Create error file
-        writeLines("Error: officer package required for Word generation", file)
-        return()
-      }
+      withProgress(message = "Generating Word Document", value = 0, {
 
-      # Check template exists
-      if (!file.exists(template_path)) {
-        status_text(paste("Warning: Template not found at", template_path, "- creating basic document"))
-        status_type("error")
+        incProgress(0.15, detail = "Step 1/6: Checking officer package...")
+        Sys.sleep(0.2)
 
-        # Create a basic document without template
-        tryCatch({
+        if (!requireNamespace("officer", quietly = TRUE)) {
+          showNotification("Error: officer package not installed", type = "error")
+          writeLines("Error: officer package required", file)
+          return()
+        }
+
+        incProgress(0.15, detail = "Step 2/6: Locating template file...")
+        Sys.sleep(0.2)
+
+        if (!file.exists(template_path)) {
+          incProgress(0.7, detail = "Creating basic document (no template)...")
+
           doc <- officer::read_docx()
           doc <- officer::body_add_par(doc, "Labour Market Statistics Brief", style = "heading 1")
           doc <- officer::body_add_par(doc, paste("Generated:", format(Sys.Date(), "%d %B %Y")))
-          doc <- officer::body_add_par(doc, "")
-          doc <- officer::body_add_par(doc, "Note: Template file (utils/DB.docx) not found. Please ensure the template exists for full document generation.")
+          doc <- officer::body_add_par(doc, "Note: Template file (utils/DB.docx) not found.")
           print(doc, target = file)
-          status_text("Basic document created (template missing)")
-          status_type("error")
-        }, error = function(e) {
-          writeLines(paste("Error creating document:", e$message), file)
-          status_text(paste("Error:", e$message))
-          status_type("error")
-        })
-        return()
-      }
 
-      # Generate full document
-      tryCatch({
-        # Source word_output.R
+          showNotification("Word document created (basic - no template)", type = "warning", duration = 3)
+          return()
+        }
+
+        incProgress(0.2, detail = "Step 3/6: Loading word output script...")
+
         source(word_script_path, local = FALSE)
 
-        # Call generate function
-        generate_word_output(
-          template_path = template_path,
-          output_path = file,
-          calculations_path = calculations_path,
-          config_path = config_path,
-          summary_path = summary_path,
-          top_ten_path = top_ten_path,
-          manual_month_override = if (nzchar(input$manual_month)) input$manual_month else NULL,
-          verbose = FALSE
-        )
+        incProgress(0.2, detail = "Step 4/6: Running calculations...")
 
-        status_text("Word document generated successfully")
-        status_type("success")
+        incProgress(0.15, detail = "Step 5/6: Generating document content...")
 
-      }, error = function(e) {
-        status_text(paste("Error generating Word document:", e$message))
-        status_type("error")
+        incProgress(0.15, detail = "Step 6/6: Writing Word file...")
 
-        # Create error document
+        cm <- confirmed_month()
+        month_override <- if (!is.null(cm)) cm else if (nzchar(input$manual_month)) input$manual_month else NULL
+
         tryCatch({
+          generate_word_output(
+            template_path = template_path,
+            output_path = file,
+            calculations_path = calculations_path,
+            config_path = config_path,
+            summary_path = summary_path,
+            top_ten_path = top_ten_path,
+            manual_month_override = month_override,
+            verbose = FALSE
+          )
+        }, error = function(e) {
+          # Create error document
           doc <- officer::read_docx()
           doc <- officer::body_add_par(doc, "Error Generating Document", style = "heading 1")
           doc <- officer::body_add_par(doc, paste("Error:", e$message))
-          doc <- officer::body_add_par(doc, "")
-          doc <- officer::body_add_par(doc, "Please check that all required data files are available and try again.")
           print(doc, target = file)
-        }, error = function(e2) {
-          writeLines(paste("Error:", e$message), file)
+          showNotification(paste("Word error:", e$message), type = "error", duration = 5)
         })
       })
+
+      showNotification("Word document generated!", type = "message", duration = 3)
     }
   )
 
   # ============================================================================
-  # DOWNLOAD: EXCEL
+  # DOWNLOAD: EXCEL - Uses exact excel_audit.R script
   # ============================================================================
 
   output$download_excel <- downloadHandler(
     filename = function() {
-      paste0("LM_Stats_Audit_", format(Sys.Date(), "%Y-%m-%d"), ".xlsx")
+      "LM_Stats_Audit.xlsx"
     },
     content = function(file) {
-      status_text("Generating Excel workbook...")
-      status_type("loading")
 
-      # Check for openxlsx package
-      if (!requireNamespace("openxlsx", quietly = TRUE)) {
-        status_text("Error: openxlsx package not installed")
-        status_type("error")
-        return()
-      }
+      withProgress(message = "Generating Excel Workbook", value = 0, {
 
-      # Check excel script exists
-      if (!file.exists(excel_script_path)) {
-        status_text("Error: excel_audit.R not found")
-        status_type("error")
+        incProgress(0.2, detail = "Loading excel_audit.R...")
+        source("sheets/excel_audit.R", local = FALSE)
 
-        # Create error workbook
-        tryCatch({
-          wb <- openxlsx::createWorkbook()
-          openxlsx::addWorksheet(wb, "Error")
-          openxlsx::writeData(wb, "Error", data.frame(
-            Error = "excel_audit.R script not found"
-          ))
-          openxlsx::saveWorkbook(wb, file, overwrite = TRUE)
-        }, error = function(e) NULL)
-        return()
-      }
+        incProgress(0.5, detail = "Building workbook...")
 
-      # Generate workbook
-      tryCatch({
-        # Override manual_month in config if provided
-        if (nzchar(input$manual_month)) {
-          manual_month <<- tolower(input$manual_month)
-        }
-
-        # Source excel script
-        source(excel_script_path, local = FALSE)
-
-        # Call create function
+        # Create LM_Stats_Audit.xlsx in project directory
         create_audit_workbook(
-          output_path = file,
-          calculations_path = calculations_path,
-          config_path = config_path,
+          output_path = "LM_Stats_Audit.xlsx",
+          calculations_path = "utils/calculations.R",
+          config_path = "utils/config.R",
           verbose = FALSE
         )
 
-        status_text("Excel workbook generated successfully")
-        status_type("success")
+        incProgress(0.2, detail = "Copying to download...")
 
-      }, error = function(e) {
-        status_text(paste("Error generating Excel:", e$message))
-        status_type("error")
+        # Copy to Shiny download location
+        file.copy("LM_Stats_Audit.xlsx", file, overwrite = TRUE)
 
-        # Create error workbook
-        tryCatch({
-          wb <- openxlsx::createWorkbook()
-          openxlsx::addWorksheet(wb, "Error")
-          openxlsx::writeData(wb, "Error", data.frame(
-            Error = c("Error generating workbook:", e$message)
-          ))
-          openxlsx::saveWorkbook(wb, file, overwrite = TRUE)
-        }, error = function(e2) NULL)
+        incProgress(0.1, detail = "Done!")
       })
     }
   )
@@ -1711,57 +797,39 @@ server <- function(input, output, session) {
     metrics <- dashboard_data()
 
     if (is.null(metrics)) {
-      return(
-        div(
-          p(class = "govuk-body", "Click 'Preview Dashboard' to load the labour market statistics."),
-          tags$ul(class = "govuk-list govuk-list--bullet",
-            tags$li("Employment and unemployment figures"),
-            tags$li("Inactivity rates"),
-            tags$li("Vacancies and payroll data"),
-            tags$li("Wage statistics")
-          )
+      return(div(
+        p(class = "govuk-body", "Click 'Preview Dashboard' to load statistics."),
+        tags$ul(class = "govuk-list",
+          tags$li("Employment and unemployment figures"),
+          tags$li("Inactivity rates"),
+          tags$li("Vacancies and payroll data"),
+          tags$li("Wage statistics")
         )
-      )
+      ))
     }
 
-    # Format functions
     format_change <- function(val, invert, type) {
       if (is.na(val)) return(tags$span(class = "stat-neutral", "-"))
 
-      # Determine CSS class
-      if (is.na(invert)) {
-        css_class <- "stat-neutral"
-      } else if (val > 0) {
-        css_class <- if (invert) "stat-negative" else "stat-positive"
-      } else if (val < 0) {
-        css_class <- if (invert) "stat-positive" else "stat-negative"
-      } else {
-        css_class <- "stat-neutral"
-      }
+      css_class <- if (is.na(invert)) "stat-neutral"
+                   else if (val > 0) { if (invert) "stat-negative" else "stat-positive" }
+                   else if (val < 0) { if (invert) "stat-positive" else "stat-negative" }
+                   else "stat-neutral"
 
-      # Format the number
       sign_str <- if (val > 0) "+" else ""
-      formatted <- if (type == "rate") {
-        paste0(sign_str, round(val, 1), "pp")
-      } else if (type == "wages") {
-        paste0(sign_str, round(val, 1), "%")
-      } else {
-        paste0(sign_str, format(round(val), big.mark = ","))
-      }
+      formatted <- if (type == "rate") paste0(sign_str, round(val, 1), "pp")
+                   else if (type == "wages") paste0(sign_str, round(val, 1), "%")
+                   else paste0(sign_str, format(round(val), big.mark = ","))
 
       tags$span(class = css_class, formatted)
     }
 
     format_current <- function(val, type) {
       if (is.na(val)) return("-")
-      if (type == "rate" || type == "wages") {
-        paste0(round(val, 1), "%")
-      } else {
-        format(round(val), big.mark = ",")
-      }
+      if (type == "rate" || type == "wages") paste0(round(val, 1), "%")
+      else format(round(val), big.mark = ",")
     }
 
-    # Build table rows
     rows <- lapply(metrics, function(m) {
       tags$tr(
         tags$td(m$name),
@@ -1774,16 +842,10 @@ server <- function(input, output, session) {
     })
 
     tags$table(class = "stats-table",
-      tags$thead(
-        tags$tr(
-          tags$th("Metric"),
-          tags$th("Current"),
-          tags$th("vs Quarter"),
-          tags$th("vs Year"),
-          tags$th("vs Covid"),
-          tags$th("vs Election")
-        )
-      ),
+      tags$thead(tags$tr(
+        tags$th("Metric"), tags$th("Current"), tags$th("vs Qtr"),
+        tags$th("vs Year"), tags$th("vs Covid"), tags$th("vs Election")
+      )),
       tags$tbody(rows)
     )
   })
@@ -1796,27 +858,22 @@ server <- function(input, output, session) {
     top10 <- topten_data()
 
     if (is.null(top10)) {
-      return(
-        div(
-          p(class = "govuk-body", "Click 'Preview Top Ten Stats' to load the key statistics."),
-          tags$ul(class = "govuk-list govuk-list--bullet",
-            tags$li("Wage growth (nominal and CPI-adjusted)"),
-            tags$li("Employment and unemployment rates"),
-            tags$li("Payroll employment"),
-            tags$li("Inactivity trends"),
-            tags$li("Vacancies and redundancies")
-          )
+      return(div(
+        p(class = "govuk-body", "Click 'Preview Top Ten Stats' to load statistics."),
+        tags$ul(class = "govuk-list",
+          tags$li("Wage growth (nominal and CPI-adjusted)"),
+          tags$li("Employment and unemployment rates"),
+          tags$li("Payroll employment"),
+          tags$li("Inactivity trends"),
+          tags$li("Vacancies and redundancies")
         )
-      )
+      ))
     }
 
-    # Build list items
     items <- lapply(1:10, function(i) {
       line_key <- paste0("line", i)
       line_text <- top10[[line_key]]
-      if (is.null(line_text) || line_text == "") {
-        line_text <- "(Data not available)"
-      }
+      if (is.null(line_text) || line_text == "") line_text <- "(Data not available)"
       tags$li(line_text)
     })
 

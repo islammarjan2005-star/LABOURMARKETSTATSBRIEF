@@ -764,135 +764,74 @@ server <- function(input, output, session) {
     },
     content = function(file) {
 
+      # Get the app's base directory (where app.R lives)
+      app_dir <- getwd()
+
+      # Build absolute paths
+      abs_excel_script  <- file.path(app_dir, "sheets", "excel_audit.R")
+      abs_calculations  <- file.path(app_dir, "utils", "calculations.R")
+      abs_config        <- file.path(app_dir, "utils", "config.R")
+
       withProgress(message = "Generating Excel Workbook", value = 0, {
 
-        incProgress(0.05, detail = "Step 1/12: Checking required packages...")
-        Sys.sleep(0.2)
+        incProgress(0.1, detail = "Step 1/5: Loading excel_audit.R...")
 
-        # Check required packages
-        required_pkgs <- c("openxlsx", "scales", "dplyr", "lubridate", "DBI", "RPostgres", "tibble", "tidyr")
-        missing_pkgs <- required_pkgs[!sapply(required_pkgs, requireNamespace, quietly = TRUE)]
+        # Source excel_audit.R with absolute path
+        source(abs_excel_script, local = FALSE)
 
-        if (length(missing_pkgs) > 0) {
-          showNotification(
-            paste("Missing packages:", paste(missing_pkgs, collapse = ", ")),
-            type = "error",
-            duration = 10
-          )
-          # Create error workbook
-          wb <- openxlsx::createWorkbook()
-          openxlsx::addWorksheet(wb, "Error")
-          openxlsx::writeData(wb, "Error", data.frame(
-            Error = paste("Missing packages:", paste(missing_pkgs, collapse = ", ")),
-            Solution = "Install with: install.packages(c('openxlsx', 'scales', 'dplyr', 'lubridate', 'DBI', 'RPostgres', 'tibble', 'tidyr'))"
-          ))
-          openxlsx::saveWorkbook(wb, file, overwrite = TRUE)
-          return()
-        }
+        incProgress(0.2, detail = "Step 2/5: Preparing configuration...")
 
-        incProgress(0.05, detail = "Step 2/12: Checking excel_audit.R script...")
-        Sys.sleep(0.2)
-
-        if (!file.exists(excel_script_path)) {
-          showNotification("Error: sheets/excel_audit.R not found", type = "error", duration = 5)
-          wb <- openxlsx::createWorkbook()
-          openxlsx::addWorksheet(wb, "Error")
-          openxlsx::writeData(wb, "Error", data.frame(Error = "excel_audit.R script not found"))
-          openxlsx::saveWorkbook(wb, file, overwrite = TRUE)
-          return()
-        }
-
-        incProgress(0.1, detail = "Step 3/12: Loading excel_audit.R functions...")
-
-        # Source the excel_audit.R script to get all functions
-        tryCatch({
-          source(excel_script_path, local = FALSE)
-        }, error = function(e) {
-          showNotification(paste("Error loading excel_audit.R:", e$message), type = "error", duration = 5)
-          wb <- openxlsx::createWorkbook()
-          openxlsx::addWorksheet(wb, "Error")
-          openxlsx::writeData(wb, "Error", data.frame(Error = paste("Failed to load excel_audit.R:", e$message)))
-          openxlsx::saveWorkbook(wb, file, overwrite = TRUE)
-          return()
-        })
-
-        incProgress(0.1, detail = "Step 4/12: Preparing configuration...")
-        Sys.sleep(0.2)
-
-        # Handle month override by temporarily modifying config
+        # Handle month override
         cm <- confirmed_month()
         month_to_use <- if (!is.null(cm)) cm else if (nzchar(input$manual_month)) tolower(input$manual_month) else NULL
 
-        # Create a temporary config file if we need to override the month
-        temp_config_path <- config_path
+        # Determine which config to use
+        final_config_path <- abs_config
+
         if (!is.null(month_to_use)) {
+          # Create temp config with month override
           temp_config_path <- tempfile(fileext = ".R")
-          if (file.exists(config_path)) {
-            config_content <- readLines(config_path)
-            # Replace manual_month value
+          if (file.exists(abs_config)) {
+            config_content <- readLines(abs_config)
             config_content <- gsub(
               'manual_month\\s*<-\\s*"[^"]*"',
               paste0('manual_month <- "', month_to_use, '"'),
               config_content
             )
+            config_content <- gsub(
+              'manual_month_hr1\\s*<-\\s*"[^"]*"',
+              paste0('manual_month_hr1 <- "', month_to_use, '"'),
+              config_content
+            )
             writeLines(config_content, temp_config_path)
           } else {
-            # Create minimal config
             writeLines(c(
               paste0('manual_month <- "', month_to_use, '"'),
               paste0('manual_month_hr1 <- "', month_to_use, '"'),
-              'manual_month <- tolower(manual_month)',
-              'manual_month_hr1 <- tolower(manual_month_hr1)',
               'COVID_LFS_LABEL <- "Dec-Feb 2020"',
               'COVID_VAC_LABEL <- "Jan-Mar 2020"',
               'ELECTION_LABEL <- "Apr-Jun 2024"'
             ), temp_config_path)
           }
+          final_config_path <- temp_config_path
         }
 
-        incProgress(0.1, detail = "Step 5/12: Connecting to database...")
+        incProgress(0.2, detail = "Step 3/5: Running calculations & fetching data...")
 
-        incProgress(0.1, detail = "Step 6/12: Building Dashboard sheet...")
+        incProgress(0.3, detail = "Step 4/5: Building workbook sheets...")
 
-        incProgress(0.08, detail = "Step 7/12: Building LFS data sheet...")
+        incProgress(0.1, detail = "Step 5/5: Saving workbook...")
 
-        incProgress(0.08, detail = "Step 8/12: Building Payroll sheet...")
+        # Call the function - it writes directly to 'file'
+        create_audit_workbook(
+          output_path = file,
+          calculations_path = abs_calculations,
+          config_path = final_config_path,
+          verbose = FALSE
+        )
 
-        incProgress(0.08, detail = "Step 9/12: Building Industry sheet...")
-
-        incProgress(0.08, detail = "Step 10/12: Building Vacancies sheet...")
-
-        incProgress(0.08, detail = "Step 11/12: Building remaining sheets...")
-
-        incProgress(0.1, detail = "Step 12/12: Saving workbook...")
-
-        # Call the create_audit_workbook function from excel_audit.R
-        tryCatch({
-          if (exists("create_audit_workbook")) {
-            create_audit_workbook(
-              output_path = file,
-              calculations_path = calculations_path,
-              config_path = temp_config_path,
-              verbose = FALSE
-            )
-          } else {
-            stop("create_audit_workbook function not found in excel_audit.R")
-          }
-        }, error = function(e) {
-          showNotification(paste("Excel generation error:", e$message), type = "error", duration = 10)
-          # Create error workbook with details
-          wb <- openxlsx::createWorkbook()
-          openxlsx::addWorksheet(wb, "Error")
-          openxlsx::writeData(wb, "Error", data.frame(
-            Error = e$message,
-            Time = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
-            Note = "This error may be due to database connection issues. Ensure PostgreSQL is running and accessible."
-          ))
-          openxlsx::saveWorkbook(wb, file, overwrite = TRUE)
-        })
-
-        # Clean up temp config if created
-        if (!is.null(month_to_use) && temp_config_path != config_path && file.exists(temp_config_path)) {
+        # Clean up temp config
+        if (!is.null(month_to_use) && exists("temp_config_path") && file.exists(temp_config_path)) {
           unlink(temp_config_path)
         }
       })

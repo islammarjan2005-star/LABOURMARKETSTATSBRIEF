@@ -19,174 +19,18 @@ suppressPackageStartupMessages({
 })
 
 # ==============================================================================
-# COLUMN NAME TO DATASET CODE MAPPINGS
+# COLUMN NAMES - CONSTRUCTED FROM DATABASE COLUMNS
 # ==============================================================================
-# Maps dataset identifier codes to human-readable column names
-# Extracted from December 25 LM Statss.xlsx
-# Structure: CODE = "Column Name"
+# Column names are now constructed dynamically from descriptive columns in the
+# database (e.g., economic_activity, value_type, age_group) rather than using
+# hardcoded mappings of dataset_indentifier_code.
+#
+# Pattern: paste(descriptor1, descriptor2, descriptor3)
+# Example: "Unemployment level Age 65+" from economic_activity + value_type + age_group
+# ==============================================================================
 
-# LFS DATA (labour_market__age_group)
-LFS_CODE_NAMES <- c(
-  "MGRZ" = "Employment 16+ (000s)",
-  "LF24" = "Employment Rate 16-64 (%)",
-  "MGSC" = "Unemployment 16+ (000s)",
-  "MGSX" = "Unemployment Rate 16+ (%)",
-  "LF2M" = "Inactivity 16-64 (000s)",
-  "LF2S" = "Inactivity Rate 16-64 (%)",
-  "LF2A" = "Inactivity 50-64 (000s)",
-  "LF2W" = "Inactivity Rate 50-64 (%)"
-)
-
-# VACANCIES (labour_market__vacancies_business)
-VACANCIES_CODE_NAMES <- c(
-  "AP2Y" = "Vacancies (000s)",
-  "AP3K" = "Quarterly Change (000s)"
-)
-
-# WAGES TOTAL (labour_market__weekly_earnings_total)
-WAGES_TOTAL_CODE_NAMES <- c(
-  "KAB9" = "Whole Economy Weekly Earnings (£)",
-  "KAC2" = "Whole Economy YoY % Single month",
-  "KAC3" = "Whole Economy YoY % 3mo avg",
-  "KAC4" = "Private Sector Weekly Earnings (£)",
-  "KAC5" = "Private Sector YoY % Single month",
-  "KAC6" = "Private Sector YoY % 3mo avg",
-  "KAC7" = "Public Sector Weekly Earnings (£)",
-  "KAC8" = "Public Sector YoY % Single month",
-  "KAC9" = "Public Sector YoY % 3mo avg",
-  "KAD8" = "Public excl Finance Weekly Earnings (£)",
-  "KAD9" = "Public excl Finance YoY % Single month",
-  "KAE2" = "Public excl Finance YoY % 3mo avg",
-  "K5BZ" = "Services Weekly Earnings (£)",
-  "K5C2" = "Services YoY % Single month",
-  "K5C3" = "Services YoY % 3mo avg",
-  "K5C4" = "Finance & Business Weekly Earnings (£)",
-  "K5C5" = "Finance & Business YoY % Single month",
-  "K5C6" = "Finance & Business YoY % 3mo avg",
-  "K5CA" = "Manufacturing Weekly Earnings (£)",
-  "K5CB" = "Manufacturing YoY % Single month",
-  "K5CC" = "Manufacturing YoY % 3mo avg",
-  "K5CD" = "Construction Weekly Earnings (£)",
-  "K5CE" = "Construction YoY % Single month",
-  "K5CF" = "Construction YoY % 3mo avg",
-  "K5CG" = "Wholesaling Weekly Earnings (£)",
-  "K5CH" = "Wholesaling YoY % Single month",
-  "K5CI" = "Wholesaling YoY % 3mo avg"
-)
-
-# WAGES REGULAR (labour_market__weekly_earnings_regular)
-WAGES_REGULAR_CODE_NAMES <- c(
-  "KAI7" = "Whole Economy Weekly Earnings (£)",
-  "KAI8" = "Whole Economy YoY % Single month",
-  "KAI9" = "Whole Economy YoY % 3mo avg",
-  "KAJ2" = "Private Sector Weekly Earnings (£)",
-  "KAJ3" = "Private Sector YoY % Single month",
-  "KAJ4" = "Private Sector YoY % 3mo avg",
-  "KAJ5" = "Public Sector Weekly Earnings (£)",
-  "KAJ6" = "Public Sector YoY % Single month",
-  "KAJ7" = "Public Sector YoY % 3mo avg",
-  "KAK6" = "Public excl Finance Weekly Earnings (£)",
-  "KAK7" = "Public excl Finance YoY % Single month",
-  "KAK8" = "Public excl Finance YoY % 3mo avg",
-  "K5DL" = "Services Weekly Earnings (£)",
-  "K5DM" = "Services YoY % Single month",
-  "K5DN" = "Services YoY % 3mo avg",
-  "K5DO" = "Finance & Business Weekly Earnings (£)",
-  "K5DP" = "Finance & Business YoY % Single month",
-  "K5DQ" = "Finance & Business YoY % 3mo avg",
-  "K5DU" = "Manufacturing Weekly Earnings (£)",
-  "K5DV" = "Manufacturing YoY % Single month",
-  "K5DW" = "Manufacturing YoY % 3mo avg",
-  "K5DX" = "Construction Weekly Earnings (£)",
-  "K5DY" = "Construction YoY % Single month",
-  "K5DZ" = "Construction YoY % 3mo avg",
-  "K5E2" = "Wholesaling Weekly Earnings (£)",
-  "K5E3" = "Wholesaling YoY % Single month",
-  "K5E4" = "Wholesaling YoY % 3mo avg"
-)
-
-# INACTIVITY BY REASON (labour_market__inactivity) - COMPLETE MAPPING
-INACTIVITY_CODE_NAMES <- c(
-  # By reason (000s)
-  "LF63" = "Student (000s)",
-  "LF65" = "Looking after family/home (000s)",
-  "LF67" = "Temp sick (000s)",
-  "LF69" = "Long-term sick (000s)",
-  "LFL8" = "Discouraged workers (000s)",
-  "LF6B" = "Retired (000s)",
-  "LF6D" = "Other (000s)",
-  "LFL9" = "Does not want job (000s)",
-  "LFM2" = "Wants a job (000s)",
-  # By reason (%)
-  "LF6V" = "Total inactive 16-64 (%)",
-  "LF6X" = "Student (%)",
-  "LF6Z" = "Looking after family/home (%)",
-  "LF73" = "Temp sick (%)",
-  "LF75" = "Long-term sick (%)",
-  "LF77" = "Discouraged workers (%)",
-  "LF79" = "Retired (%)",
-  "LF7B" = "Other (%)",
-  "LF7D" = "Does not want job (%)",
-  "LF7F" = "Wants a job (%)",
-  # Wants job breakdown
-  "LF7H" = "Wants job total (000s)",
-  "LF7J" = "Wants job - Student (000s)",
-  "LF7L" = "Wants job - Family/home (000s)",
-  "LF7N" = "Wants job - Temp sick (000s)",
-  "LF7P" = "Wants job - Long-term sick (000s)",
-  "LF7R" = "Wants job - Discouraged (000s)",
-  "LF7T" = "Wants job - Other (000s)",
-  # Does not want job breakdown
-  "LF7V" = "Does not want job total (000s)",
-  "LF7X" = "Does not want job - Student (000s)",
-  "LF7Z" = "Does not want job - Family/home (000s)",
-  "LF83" = "Does not want job - Temp sick (000s)",
-  "LF85" = "Does not want job - Long-term sick (000s)",
-  "LF87" = "Does not want job - Retired (000s)",
-  "LF89" = "Does not want job - Other (000s)",
-  # Additional codes
-  "LF6F" = "Student - wants job (000s)",
-  "LFP7" = "Looking after family - wants job (000s)",
-  "LF6H" = "Temp sick - wants job (000s)",
-  "LFP8" = "Long-term sick - wants job (000s)",
-  "LF8B" = "Discouraged - wants job (000s)",
-  "LF6J" = "Other - wants job (000s)",
-  "LF6L" = "Student - does not want job (000s)",
-  "LF6N" = "Family/home - does not want job (000s)",
-  "LF6P" = "Temp sick - does not want job (000s)",
-  "LF6R" = "Long-term sick - does not want job (000s)",
-  "LF8E" = "Retired - does not want job (000s)",
-  "LF6T" = "Other - does not want job (000s)"
-)
-
-# REDUNDANCY (labour_market__redundancies)
-REDUNDANCY_CODE_NAMES <- c(
-  "BEAO" = "People Level (000s)",
-  "BEIR" = "People Rate per 1000",
-  "BEIU" = "Men Level (000s)",
-  "BEIX" = "Men Rate per 1000",
-  "BEJA" = "Women Level (000s)",
-  "BEJD" = "Women Rate per 1000"
-)
-
-# DAYS LOST / DISPUTES (labour_market__disputes)
-DAYS_LOST_CODE_NAMES <- c(
-  "BBFW" = "Working days lost (000s)",
-  "BLUU" = "Number of stoppages",
-  "BLUT" = "Workers involved (000s)"
-)
-
-# WORKFORCE JOBS (labour_market__workforce_jobs if exists)
-WORKFORCE_CODE_NAMES <- c(
-  "DYDC" = "Workforce jobs (000s)",
-  "BCAJ" = "Employee jobs (000s)",
-  "DYZN" = "Self-employment jobs (000s)",
-  "LOJX" = "HM Forces (000s)",
-  "LOJU" = "Govt-supported trainees (000s)"
-)
-
-# INDUSTRY (labour_market__employees_industry)
-INDUSTRY_CODE_NAMES <- c(
+# INDUSTRY SIC SECTION NAMES (used for employees_industry which uses sic_section)
+INDUSTRY_SIC_NAMES <- c(
   "A" = "Agriculture",
   "B" = "Mining",
   "C" = "Manufacturing",
@@ -422,7 +266,7 @@ sort_chronologically <- function(df) {
 # ==============================================================================
 
 fetch_lfs_wide <- function() {
-  query <- 'SELECT time_period, dataset_indentifier_code, value
+  query <- 'SELECT time_period, economic_activity, value_type, age_group, value
             FROM "ons"."labour_market__age_group"'
   raw <- fetch_db(query)
   if (nrow(raw) == 0) return(tibble())
@@ -430,9 +274,7 @@ fetch_lfs_wide <- function() {
   result <- raw %>%
     mutate(
       value = as.numeric(value),
-      col_name = ifelse(dataset_indentifier_code %in% names(LFS_CODE_NAMES),
-                        LFS_CODE_NAMES[dataset_indentifier_code],
-                        dataset_indentifier_code)
+      col_name = paste(economic_activity, value_type, age_group)
     ) %>%
     group_by(time_period, col_name) %>%
     summarise(value = first(value), .groups = "drop") %>%
@@ -443,7 +285,7 @@ fetch_lfs_wide <- function() {
 }
 
 fetch_vacancies_wide <- function() {
-  query <- 'SELECT time_period, dataset_indentifier_code, value
+  query <- 'SELECT time_period, industry_section, value_type, value
             FROM "ons"."labour_market__vacancies_business"'
   raw <- fetch_db(query)
   if (nrow(raw) == 0) return(tibble())
@@ -451,9 +293,7 @@ fetch_vacancies_wide <- function() {
   result <- raw %>%
     mutate(
       value = as.numeric(value),
-      col_name = ifelse(dataset_indentifier_code %in% names(VACANCIES_CODE_NAMES),
-                        VACANCIES_CODE_NAMES[dataset_indentifier_code],
-                        dataset_indentifier_code)
+      col_name = paste(industry_section, value_type)
     ) %>%
     group_by(time_period, col_name) %>%
     summarise(value = first(value), .groups = "drop") %>%
@@ -488,8 +328,8 @@ fetch_industry_wide <- function() {
   result <- raw %>%
     mutate(
       value = as.numeric(value),
-      col_name = ifelse(sic_section %in% names(INDUSTRY_CODE_NAMES),
-                        paste0(sic_section, "-", INDUSTRY_CODE_NAMES[sic_section]),
+      col_name = ifelse(sic_section %in% names(INDUSTRY_SIC_NAMES),
+                        paste0(sic_section, "-", INDUSTRY_SIC_NAMES[sic_section]),
                         sic_section)
     ) %>%
     group_by(time_period, col_name) %>%
@@ -501,7 +341,7 @@ fetch_industry_wide <- function() {
 }
 
 fetch_wages_total_wide <- function() {
-  query <- 'SELECT time_period, dataset_indentifier_code, value
+  query <- 'SELECT time_period, sector, metric_type, value
             FROM "ons"."labour_market__weekly_earnings_total"'
   raw <- fetch_db(query)
   if (nrow(raw) == 0) return(tibble())
@@ -509,9 +349,7 @@ fetch_wages_total_wide <- function() {
   result <- raw %>%
     mutate(
       value = as.numeric(value),
-      col_name = ifelse(dataset_indentifier_code %in% names(WAGES_TOTAL_CODE_NAMES),
-                        WAGES_TOTAL_CODE_NAMES[dataset_indentifier_code],
-                        dataset_indentifier_code)
+      col_name = paste(sector, metric_type)
     ) %>%
     group_by(time_period, col_name) %>%
     summarise(value = first(value), .groups = "drop") %>%
@@ -522,7 +360,7 @@ fetch_wages_total_wide <- function() {
 }
 
 fetch_wages_regular_wide <- function() {
-  query <- 'SELECT time_period, dataset_indentifier_code, value
+  query <- 'SELECT time_period, sector, metric_type, value
             FROM "ons"."labour_market__weekly_earnings_regular"'
   raw <- fetch_db(query)
   if (nrow(raw) == 0) return(tibble())
@@ -530,9 +368,7 @@ fetch_wages_regular_wide <- function() {
   result <- raw %>%
     mutate(
       value = as.numeric(value),
-      col_name = ifelse(dataset_indentifier_code %in% names(WAGES_REGULAR_CODE_NAMES),
-                        WAGES_REGULAR_CODE_NAMES[dataset_indentifier_code],
-                        dataset_indentifier_code)
+      col_name = paste(sector, metric_type)
     ) %>%
     group_by(time_period, col_name) %>%
     summarise(value = first(value), .groups = "drop") %>%
@@ -562,7 +398,7 @@ fetch_wages_cpi_wide <- function() {
 }
 
 fetch_inactivity_wide <- function() {
-  query <- 'SELECT time_period, dataset_indentifier_code, value
+  query <- 'SELECT time_period, inactivity_reason, value_type, wants_job, value
             FROM "ons"."labour_market__inactivity"'
   raw <- fetch_db(query)
   if (nrow(raw) == 0) return(tibble())
@@ -570,9 +406,7 @@ fetch_inactivity_wide <- function() {
   result <- raw %>%
     mutate(
       value = as.numeric(value),
-      col_name = ifelse(dataset_indentifier_code %in% names(INACTIVITY_CODE_NAMES),
-                        INACTIVITY_CODE_NAMES[dataset_indentifier_code],
-                        dataset_indentifier_code)
+      col_name = paste(inactivity_reason, value_type, wants_job)
     ) %>%
     group_by(time_period, col_name) %>%
     summarise(value = first(value), .groups = "drop") %>%
@@ -583,7 +417,7 @@ fetch_inactivity_wide <- function() {
 }
 
 fetch_redundancy_wide <- function() {
-  query <- 'SELECT time_period, dataset_indentifier_code, value
+  query <- 'SELECT time_period, sex, value_type, value
             FROM "ons"."labour_market__redundancies"'
   raw <- fetch_db(query)
   if (nrow(raw) == 0) return(tibble())
@@ -591,9 +425,7 @@ fetch_redundancy_wide <- function() {
   result <- raw %>%
     mutate(
       value = as.numeric(value),
-      col_name = ifelse(dataset_indentifier_code %in% names(REDUNDANCY_CODE_NAMES),
-                        REDUNDANCY_CODE_NAMES[dataset_indentifier_code],
-                        dataset_indentifier_code)
+      col_name = paste(sex, value_type)
     ) %>%
     group_by(time_period, col_name) %>%
     summarise(value = first(value), .groups = "drop") %>%
@@ -604,7 +436,7 @@ fetch_redundancy_wide <- function() {
 }
 
 fetch_days_lost_wide <- function() {
-  query <- 'SELECT time_period, dataset_indentifier_code, value
+  query <- 'SELECT time_period, metric_type, value
             FROM "ons"."labour_market__disputes"'
   raw <- fetch_db(query)
   if (nrow(raw) == 0) return(tibble())
@@ -612,9 +444,7 @@ fetch_days_lost_wide <- function() {
   result <- raw %>%
     mutate(
       value = as.numeric(value),
-      col_name = ifelse(dataset_indentifier_code %in% names(DAYS_LOST_CODE_NAMES),
-                        DAYS_LOST_CODE_NAMES[dataset_indentifier_code],
-                        dataset_indentifier_code)
+      col_name = metric_type
     ) %>%
     group_by(time_period, col_name) %>%
     summarise(value = first(value), .groups = "drop") %>%
@@ -1000,8 +830,7 @@ create_audit_workbook <- function(output_path,
   wb <- build_data_sheet(wb, "2", "Labour Force Survey - A01",
                          data, "labour_market__age_group",
                          label_type = "lfs", anchor_date = lfs_anchor,
-                         covid_label = "Dec-Feb 2020", election_label = "Apr-Jun 2024",
-                         code_map = LFS_CODE_NAMES)
+                         covid_label = "Dec-Feb 2020", election_label = "Apr-Jun 2024")
 
   # 3. PAYROLL (Sheet "1. Payrolled employees (UK)" equivalent)
   if (verbose) message("Building: 1. Payrolled employees (UK)...")
@@ -1018,7 +847,7 @@ create_audit_workbook <- function(output_path,
                          data, "labour_market__employees_industry",
                          label_type = "payroll", anchor_date = payroll_anchor,
                          covid_label = "February 2020", election_label = "June 2024",
-                         code_map = INDUSTRY_CODE_NAMES)
+                         code_map = INDUSTRY_SIC_NAMES)
 
   # 5. VACANCIES (Sheet "5" equivalent)
   if (verbose) message("Building: 5 (Vacancies)...")
@@ -1026,8 +855,7 @@ create_audit_workbook <- function(output_path,
   wb <- build_data_sheet(wb, "5", "Job Vacancies",
                          data, "labour_market__vacancies_business",
                          label_type = "lfs", anchor_date = lfs_anchor,
-                         covid_label = "Jan-Mar 2020", election_label = "Apr-Jun 2024",
-                         code_map = VACANCIES_CODE_NAMES)
+                         covid_label = "Jan-Mar 2020", election_label = "Apr-Jun 2024")
 
   # 6. REDUNDANCY (Sheet "10" equivalent)
   if (verbose) message("Building: 10 (Redundancies)...")
@@ -1035,8 +863,7 @@ create_audit_workbook <- function(output_path,
   wb <- build_data_sheet(wb, "10", "LFS Redundancy Rate",
                          data, "labour_market__redundancies",
                          label_type = "lfs", anchor_date = lfs_anchor,
-                         covid_label = "Dec-Feb 2020", election_label = "Apr-Jun 2024",
-                         code_map = REDUNDANCY_CODE_NAMES)
+                         covid_label = "Dec-Feb 2020", election_label = "Apr-Jun 2024")
 
   # 7. INACTIVITY (Sheet "11" equivalent)
   if (verbose) message("Building: 11 (Inactivity by Reason)...")
@@ -1044,8 +871,7 @@ create_audit_workbook <- function(output_path,
   wb <- build_data_sheet(wb, "11", "Inactivity by Reason",
                          data, "labour_market__inactivity",
                          label_type = "lfs", anchor_date = lfs_anchor,
-                         covid_label = "Dec-Feb 2020", election_label = "Apr-Jun 2024",
-                         code_map = INACTIVITY_CODE_NAMES)
+                         covid_label = "Dec-Feb 2020", election_label = "Apr-Jun 2024")
 
   # 8. AWE TOTAL (Sheet "13" equivalent)
   if (verbose) message("Building: 13 (AWE Total)...")
@@ -1053,8 +879,7 @@ create_audit_workbook <- function(output_path,
   wb <- build_data_sheet(wb, "13", "AWE - Total Pay",
                          data, "labour_market__weekly_earnings_total",
                          label_type = "ymd", anchor_date = wages_anchor,
-                         covid_label = "2020-02-01", election_label = "2024-06-01",
-                         code_map = WAGES_TOTAL_CODE_NAMES)
+                         covid_label = "2020-02-01", election_label = "2024-06-01")
 
   # 9. AWE REGULAR (Sheet "15" equivalent)
   if (verbose) message("Building: 15 (AWE Regular)...")
@@ -1062,8 +887,7 @@ create_audit_workbook <- function(output_path,
   wb <- build_data_sheet(wb, "15", "AWE - Regular Pay",
                          data, "labour_market__weekly_earnings_regular",
                          label_type = "ymd", anchor_date = wages_anchor,
-                         covid_label = "2020-02-01", election_label = "2024-06-01",
-                         code_map = WAGES_REGULAR_CODE_NAMES)
+                         covid_label = "2020-02-01", election_label = "2024-06-01")
 
   # 10. AWE CPI (Sheet "AWE Real_CPI" equivalent)
   if (verbose) message("Building: AWE Real_CPI...")
@@ -1082,8 +906,7 @@ create_audit_workbook <- function(output_path,
   wb <- build_data_sheet(wb, "18", "Working Days Lost",
                          data, "labour_market__disputes",
                          label_type = "payroll", anchor_date = days_lost_anchor,
-                         covid_label = "February 2020", election_label = "June 2024",
-                         code_map = DAYS_LOST_CODE_NAMES)
+                         covid_label = "February 2020", election_label = "June 2024")
 
   # 12. HR1 (Sheet "1a" equivalent)
   if (verbose) message("Building: 1a (HR1 Notifications)...")

@@ -760,39 +760,32 @@ server <- function(input, output, session) {
 
   output$download_excel <- downloadHandler(
     filename = function() {
-      paste0("LM_Stats_Audit_", format(Sys.Date(), "%Y-%m-%d"), ".xlsx")
+      "LM_Stats_Audit.xlsx"
     },
     content = function(file) {
-
-      library(openxlsx)
-
-      # Output file in project directory (known working location)
-      output_xlsx <- "LM_Stats_Output.xlsx"
 
       withProgress(message = "Generating Excel Workbook", value = 0, {
 
         incProgress(0.2, detail = "Loading excel_audit.R...")
         source("sheets/excel_audit.R", local = FALSE)
 
-        incProgress(0.3, detail = "Building workbook...")
+        incProgress(0.5, detail = "Building workbook...")
 
-        # Create the workbook in project directory
+        # Create LM_Stats_Audit.xlsx in project directory
         create_audit_workbook(
-          output_path = output_xlsx,
+          output_path = "LM_Stats_Audit.xlsx",
           calculations_path = "utils/calculations.R",
           config_path = "utils/config.R",
           verbose = FALSE
         )
 
-        incProgress(0.4, detail = "Preparing download...")
+        incProgress(0.2, detail = "Copying to download...")
 
-        # Read the created file and write to Shiny's download location
-        file.copy(output_xlsx, file, overwrite = TRUE)
+        # Copy to Shiny download location
+        file.copy("LM_Stats_Audit.xlsx", file, overwrite = TRUE)
 
         incProgress(0.1, detail = "Done!")
       })
-
-      showNotification("Excel workbook downloaded!", type = "message", duration = 3)
     }
   )
 

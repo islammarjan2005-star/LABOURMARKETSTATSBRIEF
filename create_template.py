@@ -192,11 +192,47 @@ def insert_placeholder(ws, row, col, placeholder_name, style=True):
         cell.font = PLACEHOLDER_FONT
 
 
+def clear_source_data(ws, start_row, max_col=None):
+    """Clear all data from start_row to the end of the sheet."""
+    if max_col is None:
+        max_col = ws.max_column
+
+    cleared = 0
+    for row in range(start_row, ws.max_row + 1):
+        for col in range(1, max_col + 1):
+            cell = ws.cell(row=row, column=col)
+            if cell.value is not None:
+                cell.value = None
+                cleared += 1
+    return cleared
+
+
+# Define where source data starts for each sheet (to be cleared)
+SOURCE_DATA_CONFIG = {
+    "Dashboard": None,  # No source data to clear
+    "2": {"start_row": 18, "max_col": 66},  # LFS source data
+    "1. Payrolled employees (UK)": {"start_row": 11, "max_col": 19},
+    "23. Employees Industry": {"start_row": 14, "max_col": 44},
+    "5": {"start_row": 16, "max_col": 18},
+    "10": {"start_row": 10, "max_col": 18},
+    "11": {"start_row": 10, "max_col": 50},
+    "13": {"start_row": 18, "max_col": 29},
+    "15": {"start_row": 18, "max_col": 28},
+    "18": {"start_row": 10, "max_col": 14},
+    "20": {"start_row": 10, "max_col": 17},
+    "21": {"start_row": 10, "max_col": 28},
+    "AWE Real_CPI": {"start_row": 17, "max_col": 16},
+    "1a": {"start_row": 10, "max_col": 18},
+    "1b": {"start_row": 10, "max_col": 13},
+}
+
+
 def create_template():
-    """Create the template file with placeholders."""
+    """Create the template file with placeholders and cleared source data."""
     print(f"Loading source file: {SOURCE_FILE}")
     wb = openpyxl.load_workbook(SOURCE_FILE)
 
+    # First, insert placeholders in configured sheets
     for sheet_name, config in SHEETS_CONFIG.items():
         if sheet_name not in wb.sheetnames:
             print(f"  Warning: Sheet '{sheet_name}' not found, skipping")
@@ -216,6 +252,21 @@ def create_template():
             tr, tc = config["title_cell"]
             insert_placeholder(ws, tr, tc, config["title_placeholder"])
             print(f"  Inserted title placeholder at R{tr}C{tc}")
+
+    # Now clear source data from all sheets
+    print("\n=== Clearing source data ===")
+    for sheet_name, clear_config in SOURCE_DATA_CONFIG.items():
+        if clear_config is None:
+            continue
+        if sheet_name not in wb.sheetnames:
+            continue
+
+        ws = wb[sheet_name]
+        start_row = clear_config["start_row"]
+        max_col = clear_config.get("max_col", ws.max_column)
+
+        cleared = clear_source_data(ws, start_row, max_col)
+        print(f"  {sheet_name}: Cleared {cleared} cells from row {start_row}")
 
     # Save the template
     print(f"\nSaving template to: {TEMPLATE_FILE}")

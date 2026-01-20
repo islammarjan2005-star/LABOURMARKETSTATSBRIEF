@@ -755,7 +755,7 @@ server <- function(input, output, session) {
   )
 
   # ============================================================================
-  # DOWNLOAD: EXCEL - Simplified version using calculations data
+  # DOWNLOAD: EXCEL - Uses exact excel_audit.R script
   # ============================================================================
 
   output$download_excel <- downloadHandler(
@@ -766,194 +766,135 @@ server <- function(input, output, session) {
 
       withProgress(message = "Generating Excel Workbook", value = 0, {
 
-        incProgress(0.1, detail = "Step 1/6: Checking openxlsx package...")
+        incProgress(0.05, detail = "Step 1/12: Checking required packages...")
         Sys.sleep(0.2)
 
-        if (!requireNamespace("openxlsx", quietly = TRUE)) {
-          showNotification("Error: openxlsx package not installed", type = "error")
-          return()
-        }
+        # Check required packages
+        required_pkgs <- c("openxlsx", "scales", "dplyr", "lubridate", "DBI", "RPostgres", "tibble", "tidyr")
+        missing_pkgs <- required_pkgs[!sapply(required_pkgs, requireNamespace, quietly = TRUE)]
 
-        incProgress(0.15, detail = "Step 2/6: Loading configuration...")
-        Sys.sleep(0.2)
-
-        calc_env <- new.env(parent = globalenv())
-
-        if (file.exists(config_path)) {
-          source(config_path, local = calc_env)
-        }
-
-        cm <- confirmed_month()
-        if (!is.null(cm)) {
-          calc_env$manual_month <- cm
-        } else if (nzchar(input$manual_month)) {
-          calc_env$manual_month <- tolower(input$manual_month)
-        }
-
-        incProgress(0.2, detail = "Step 3/6: Running calculations...")
-
-        tryCatch({
-          source(calculations_path, local = calc_env)
-        }, error = function(e) {
-          showNotification(paste("Calculation error:", e$message), type = "error", duration = 5)
+        if (length(missing_pkgs) > 0) {
+          showNotification(
+            paste("Missing packages:", paste(missing_pkgs, collapse = ", ")),
+            type = "error",
+            duration = 10
+          )
           # Create error workbook
           wb <- openxlsx::createWorkbook()
           openxlsx::addWorksheet(wb, "Error")
-          openxlsx::writeData(wb, "Error", data.frame(Error = e$message))
+          openxlsx::writeData(wb, "Error", data.frame(
+            Error = paste("Missing packages:", paste(missing_pkgs, collapse = ", ")),
+            Solution = "Install with: install.packages(c('openxlsx', 'scales', 'dplyr', 'lubridate', 'DBI', 'RPostgres', 'tibble', 'tidyr'))"
+          ))
+          openxlsx::saveWorkbook(wb, file, overwrite = TRUE)
+          return()
+        }
+
+        incProgress(0.05, detail = "Step 2/12: Checking excel_audit.R script...")
+        Sys.sleep(0.2)
+
+        if (!file.exists(excel_script_path)) {
+          showNotification("Error: sheets/excel_audit.R not found", type = "error", duration = 5)
+          wb <- openxlsx::createWorkbook()
+          openxlsx::addWorksheet(wb, "Error")
+          openxlsx::writeData(wb, "Error", data.frame(Error = "excel_audit.R script not found"))
+          openxlsx::saveWorkbook(wb, file, overwrite = TRUE)
+          return()
+        }
+
+        incProgress(0.1, detail = "Step 3/12: Loading excel_audit.R functions...")
+
+        # Source the excel_audit.R script to get all functions
+        tryCatch({
+          source(excel_script_path, local = FALSE)
+        }, error = function(e) {
+          showNotification(paste("Error loading excel_audit.R:", e$message), type = "error", duration = 5)
+          wb <- openxlsx::createWorkbook()
+          openxlsx::addWorksheet(wb, "Error")
+          openxlsx::writeData(wb, "Error", data.frame(Error = paste("Failed to load excel_audit.R:", e$message)))
           openxlsx::saveWorkbook(wb, file, overwrite = TRUE)
           return()
         })
 
-        incProgress(0.2, detail = "Step 4/6: Building Dashboard sheet...")
+        incProgress(0.1, detail = "Step 4/12: Preparing configuration...")
+        Sys.sleep(0.2)
 
-        # Create workbook
-        wb <- openxlsx::createWorkbook()
+        # Handle month override by temporarily modifying config
+        cm <- confirmed_month()
+        month_to_use <- if (!is.null(cm)) cm else if (nzchar(input$manual_month)) tolower(input$manual_month) else NULL
 
-        # Helper to get values
-        gv <- function(name) {
-          if (exists(name, envir = calc_env)) {
-            val <- get(name, envir = calc_env)
-            if (is.numeric(val)) return(val)
+        # Create a temporary config file if we need to override the month
+        temp_config_path <- config_path
+        if (!is.null(month_to_use)) {
+          temp_config_path <- tempfile(fileext = ".R")
+          if (file.exists(config_path)) {
+            config_content <- readLines(config_path)
+            # Replace manual_month value
+            config_content <- gsub(
+              'manual_month\\s*<-\\s*"[^"]*"',
+              paste0('manual_month <- "', month_to_use, '"'),
+              config_content
+            )
+            writeLines(config_content, temp_config_path)
+          } else {
+            # Create minimal config
+            writeLines(c(
+              paste0('manual_month <- "', month_to_use, '"'),
+              paste0('manual_month_hr1 <- "', month_to_use, '"'),
+              'manual_month <- tolower(manual_month)',
+              'manual_month_hr1 <- tolower(manual_month_hr1)',
+              'COVID_LFS_LABEL <- "Dec-Feb 2020"',
+              'COVID_VAC_LABEL <- "Jan-Mar 2020"',
+              'ELECTION_LABEL <- "Apr-Jun 2024"'
+            ), temp_config_path)
           }
-          NA_real_
         }
 
-        # Add Dashboard sheet
-        openxlsx::addWorksheet(wb, "Dashboard")
+        incProgress(0.1, detail = "Step 5/12: Connecting to database...")
 
-        # Title
-        openxlsx::writeData(wb, "Dashboard", "Labour Market Statistics - Key Metrics", startRow = 1, startCol = 1)
+        incProgress(0.1, detail = "Step 6/12: Building Dashboard sheet...")
 
-        # Get period label
-        period_label <- if (exists("lfs_period_label", envir = calc_env)) {
-          get("lfs_period_label", envir = calc_env)
-        } else {
-          format(Sys.Date(), "%B %Y")
+        incProgress(0.08, detail = "Step 7/12: Building LFS data sheet...")
+
+        incProgress(0.08, detail = "Step 8/12: Building Payroll sheet...")
+
+        incProgress(0.08, detail = "Step 9/12: Building Industry sheet...")
+
+        incProgress(0.08, detail = "Step 10/12: Building Vacancies sheet...")
+
+        incProgress(0.08, detail = "Step 11/12: Building remaining sheets...")
+
+        incProgress(0.1, detail = "Step 12/12: Saving workbook...")
+
+        # Call the create_audit_workbook function from excel_audit.R
+        tryCatch({
+          if (exists("create_audit_workbook")) {
+            create_audit_workbook(
+              output_path = file,
+              calculations_path = calculations_path,
+              config_path = temp_config_path,
+              verbose = FALSE
+            )
+          } else {
+            stop("create_audit_workbook function not found in excel_audit.R")
+          }
+        }, error = function(e) {
+          showNotification(paste("Excel generation error:", e$message), type = "error", duration = 10)
+          # Create error workbook with details
+          wb <- openxlsx::createWorkbook()
+          openxlsx::addWorksheet(wb, "Error")
+          openxlsx::writeData(wb, "Error", data.frame(
+            Error = e$message,
+            Time = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
+            Note = "This error may be due to database connection issues. Ensure PostgreSQL is running and accessible."
+          ))
+          openxlsx::saveWorkbook(wb, file, overwrite = TRUE)
+        })
+
+        # Clean up temp config if created
+        if (!is.null(month_to_use) && temp_config_path != config_path && file.exists(temp_config_path)) {
+          unlink(temp_config_path)
         }
-
-        openxlsx::writeData(wb, "Dashboard", paste("Period:", period_label), startRow = 2, startCol = 1)
-        openxlsx::writeData(wb, "Dashboard", paste("Generated:", format(Sys.time(), "%d %B %Y %H:%M")), startRow = 3, startCol = 1)
-
-        # Headers
-        headers <- c("Metric", "Current", "Change on Qtr", "Change on Year", "Change since Covid", "Change since Election")
-        for (i in seq_along(headers)) {
-          openxlsx::writeData(wb, "Dashboard", headers[i], startRow = 5, startCol = i)
-        }
-
-        # Header style
-        header_style <- openxlsx::createStyle(
-          fontColour = "#FFFFFF", fgFill = "#0C275C", halign = "center",
-          textDecoration = "bold", border = "TopBottomLeftRight"
-        )
-        openxlsx::addStyle(wb, "Dashboard", header_style, rows = 5, cols = 1:6, gridExpand = TRUE)
-
-        incProgress(0.15, detail = "Step 5/6: Writing metrics data...")
-
-        # Metrics data
-        metrics_data <- data.frame(
-          Metric = c(
-            "Employment 16+ (000s)",
-            "Employment rate 16-64 (%)",
-            "Unemployment 16+ (000s)",
-            "Unemployment rate 16+ (%)",
-            "Inactivity 16-64 (000s)",
-            "Inactivity 50-64 (000s)",
-            "Inactivity rate 16-64 (%)",
-            "Inactivity rate 50-64 (%)",
-            "Vacancies (000s)",
-            "Payroll employees (000s)",
-            "Wages total pay (%)",
-            "Wages CPI-adjusted (%)"
-          ),
-          Current = c(
-            round(gv("emp16_cur") / 1000),
-            round(gv("emp_rt_cur"), 1),
-            round(gv("unemp16_cur") / 1000),
-            round(gv("unemp_rt_cur"), 1),
-            round(gv("inact_cur") / 1000),
-            round(gv("inact5064_cur") / 1000),
-            round(gv("inact_rt_cur"), 1),
-            round(gv("inact5064_rt_cur"), 1),
-            round(gv("vac_cur")),
-            round(gv("payroll_cur")),
-            round(gv("latest_wages"), 1),
-            round(gv("latest_wages_cpi"), 1)
-          ),
-          ChangeQtr = c(
-            round(gv("emp16_dq") / 1000),
-            round(gv("emp_rt_dq"), 1),
-            round(gv("unemp16_dq") / 1000),
-            round(gv("unemp_rt_dq"), 1),
-            round(gv("inact_dq") / 1000),
-            round(gv("inact5064_dq") / 1000),
-            round(gv("inact_rt_dq"), 1),
-            round(gv("inact5064_rt_dq"), 1),
-            round(gv("vac_dq")),
-            round(gv("payroll_dq")),
-            round(gv("wages_change_q"), 1),
-            round(gv("wages_cpi_change_q"), 1)
-          ),
-          ChangeYear = c(
-            round(gv("emp16_dy") / 1000),
-            round(gv("emp_rt_dy"), 1),
-            round(gv("unemp16_dy") / 1000),
-            round(gv("unemp_rt_dy"), 1),
-            round(gv("inact_dy") / 1000),
-            round(gv("inact5064_dy") / 1000),
-            round(gv("inact_rt_dy"), 1),
-            round(gv("inact5064_rt_dy"), 1),
-            round(gv("vac_dy")),
-            round(gv("payroll_dy")),
-            round(gv("wages_change_y"), 1),
-            round(gv("wages_cpi_change_y"), 1)
-          ),
-          ChangeCovid = c(
-            round(gv("emp16_dc") / 1000),
-            round(gv("emp_rt_dc"), 1),
-            round(gv("unemp16_dc") / 1000),
-            round(gv("unemp_rt_dc"), 1),
-            round(gv("inact_dc") / 1000),
-            round(gv("inact5064_dc") / 1000),
-            round(gv("inact_rt_dc"), 1),
-            round(gv("inact5064_rt_dc"), 1),
-            round(gv("vac_dc")),
-            round(gv("payroll_dc")),
-            round(gv("wages_change_covid"), 1),
-            round(gv("wages_cpi_change_covid"), 1)
-          ),
-          ChangeElection = c(
-            round(gv("emp16_de") / 1000),
-            round(gv("emp_rt_de"), 1),
-            round(gv("unemp16_de") / 1000),
-            round(gv("unemp_rt_de"), 1),
-            round(gv("inact_de") / 1000),
-            round(gv("inact5064_de") / 1000),
-            round(gv("inact_rt_de"), 1),
-            round(gv("inact5064_rt_de"), 1),
-            round(gv("vac_de")),
-            round(gv("payroll_de")),
-            round(gv("wages_change_election"), 1),
-            round(gv("wages_cpi_change_election"), 1)
-          ),
-          stringsAsFactors = FALSE
-        )
-
-        openxlsx::writeData(wb, "Dashboard", metrics_data, startRow = 6, startCol = 1, colNames = FALSE)
-
-        # Data style
-        data_style <- openxlsx::createStyle(border = "TopBottomLeftRight", halign = "center")
-        metric_style <- openxlsx::createStyle(border = "TopBottomLeftRight", halign = "left", textDecoration = "bold")
-        openxlsx::addStyle(wb, "Dashboard", metric_style, rows = 6:17, cols = 1, gridExpand = TRUE)
-        openxlsx::addStyle(wb, "Dashboard", data_style, rows = 6:17, cols = 2:6, gridExpand = TRUE)
-
-        # Column widths
-        openxlsx::setColWidths(wb, "Dashboard", cols = 1, widths = 30)
-        openxlsx::setColWidths(wb, "Dashboard", cols = 2:6, widths = 18)
-
-        incProgress(0.2, detail = "Step 6/6: Saving workbook...")
-
-        # Save
-        openxlsx::saveWorkbook(wb, file, overwrite = TRUE)
       })
 
       showNotification("Excel workbook generated!", type = "message", duration = 3)

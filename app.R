@@ -764,92 +764,78 @@ server <- function(input, output, session) {
     },
     content = function(file) {
 
-      # This MUST write an xlsx file to 'file' no matter what - otherwise Shiny returns .htm error
-      result <- tryCatch({
+      # Load openxlsx first - we need it for error handling fallback
+      library(openxlsx)
+
+      # Create temp output file (avoids issues with Shiny's temp file path)
+      temp_xlsx <- tempfile(fileext = ".xlsx")
+
+      tryCatch({
 
         withProgress(message = "Generating Excel Workbook", value = 0, {
 
-          # Get the app's base directory
-          app_dir <- getwd()
+          incProgress(0.1, detail = "Loading excel_audit.R...")
 
-          # Build absolute paths
-          abs_excel_script  <- file.path(app_dir, "sheets", "excel_audit.R")
-          abs_calculations  <- file.path(app_dir, "utils", "calculations.R")
-          abs_config        <- file.path(app_dir, "utils", "config.R")
+          # Source excel_audit.R from the app directory
+          source("sheets/excel_audit.R", local = FALSE)
 
-          incProgress(0.1, detail = "Step 1/5: Loading excel_audit.R...")
-
-          # Source excel_audit.R
-          source(abs_excel_script, local = FALSE)
-
-          incProgress(0.2, detail = "Step 2/5: Preparing configuration...")
+          incProgress(0.2, detail = "Preparing configuration...")
 
           # Handle month override
           cm <- confirmed_month()
           month_to_use <- if (!is.null(cm)) cm else if (nzchar(input$manual_month)) tolower(input$manual_month) else NULL
 
-          final_config_path <- abs_config
+          config_to_use <- "utils/config.R"
 
           if (!is.null(month_to_use)) {
-            temp_config_path <- tempfile(fileext = ".R")
-            if (file.exists(abs_config)) {
-              config_content <- readLines(abs_config)
-              config_content <- gsub('manual_month\\s*<-\\s*"[^"]*"',
-                                     paste0('manual_month <- "', month_to_use, '"'),
-                                     config_content)
-              config_content <- gsub('manual_month_hr1\\s*<-\\s*"[^"]*"',
-                                     paste0('manual_month_hr1 <- "', month_to_use, '"'),
-                                     config_content)
-              writeLines(config_content, temp_config_path)
-            } else {
-              writeLines(c(
-                paste0('manual_month <- "', month_to_use, '"'),
-                paste0('manual_month_hr1 <- "', month_to_use, '"'),
-                'COVID_LFS_LABEL <- "Dec-Feb 2020"',
-                'COVID_VAC_LABEL <- "Jan-Mar 2020"',
-                'ELECTION_LABEL <- "Apr-Jun 2024"'
-              ), temp_config_path)
-            }
-            final_config_path <- temp_config_path
+            # Create temp config with month override
+            temp_config <- tempfile(fileext = ".R")
+            config_lines <- readLines("utils/config.R")
+            config_lines <- gsub('manual_month\\s*<-\\s*"[^"]*"',
+                                 paste0('manual_month <- "', month_to_use, '"'),
+                                 config_lines)
+            config_lines <- gsub('manual_month_hr1\\s*<-\\s*"[^"]*"',
+                                 paste0('manual_month_hr1 <- "', month_to_use, '"'),
+                                 config_lines)
+            writeLines(config_lines, temp_config)
+            config_to_use <- temp_config
           }
 
-          incProgress(0.3, detail = "Step 3/5: Running calculations & building sheets...")
+          incProgress(0.3, detail = "Running calculations...")
 
-          incProgress(0.3, detail = "Step 4/5: Fetching database data...")
+          incProgress(0.3, detail = "Building workbook...")
 
-          # Call the function
+          # Call create_audit_workbook - write to our temp file
           create_audit_workbook(
-            output_path = file,
-            calculations_path = abs_calculations,
-            config_path = final_config_path,
+            output_path = temp_xlsx,
+            calculations_path = "utils/calculations.R",
+            config_path = config_to_use,
             verbose = FALSE
           )
 
-          incProgress(0.1, detail = "Step 5/5: Done!")
-
-          # Cleanup temp config
-          if (!is.null(month_to_use) && exists("temp_config_path") && file.exists(temp_config_path)) {
-            unlink(temp_config_path)
-          }
+          incProgress(0.1, detail = "Finalizing...")
         })
 
+        # Copy temp file to download location
+        file.copy(temp_xlsx, file, overwrite = TRUE)
         showNotification("Excel workbook generated!", type = "message", duration = 3)
-        TRUE
 
       }, error = function(e) {
-        # If ANYTHING fails, we MUST still write a valid xlsx to 'file'
+        # On error, create an error workbook
         showNotification(paste("Error:", e$message), type = "error", duration = 10)
 
-        wb <- openxlsx::createWorkbook()
-        openxlsx::addWorksheet(wb, "Error")
-        openxlsx::writeData(wb, "Error", data.frame(
+        wb <- createWorkbook()
+        addWorksheet(wb, "Error")
+        writeData(wb, "Error", data.frame(
           Error = e$message,
           Time = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
-          WorkingDir = getwd(),
-          Note = "Check that PostgreSQL database is running and accessible."
+          WorkingDir = getwd()
         ))
-        openxlsx::saveWorkbook(wb, file, overwrite = TRUE)
-        FALSE
+        saveWorkbook(wb, file, overwrite = TRUE)
+
+      }, finally = {
+        # Clean up temp file
+        if (file.exists(temp_xlsx)) unlink(temp_xlsx)
       })
     }
   )

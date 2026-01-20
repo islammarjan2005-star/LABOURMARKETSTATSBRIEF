@@ -21,36 +21,23 @@ suppressPackageStartupMessages({
 # ==============================================================================
 # COLUMN NAMES - CONSTRUCTED FROM DATABASE COLUMNS
 # ==============================================================================
-# Column names are now constructed dynamically from descriptive columns in the
-# database (e.g., economic_activity, value_type, age_group) rather than using
-# hardcoded mappings of dataset_indentifier_code.
+# Column names are constructed dynamically from descriptive columns in the
+# database rather than using hardcoded mappings of dataset_indentifier_code.
 #
-# Pattern: paste(descriptor1, descriptor2, descriptor3)
-# Example: "Unemployment level Age 65+" from economic_activity + value_type + age_group
+# Table                     | Column(s) used for names
+# --------------------------|--------------------------------------------------
+# age_group                 | economic_activity, value_type, age_group
+# vacancies_business        | business_metric
+# payrolled_employees       | unit_type
+# employees_industry        | industry
+# weekly_earnings_total     | sector, earnings_metric, time_basis
+# weekly_earnings_regular   | sector, earnings_metric, time_basis
+# weekly_earnings_cpi       | earnings_type, earnings_metric
+# inactivity                | inactivity_measure, inactivity_reason
+# redundancies              | population_group, value_type
+# disputes                  | dispute_type
+# redundancies_region       | region
 # ==============================================================================
-
-# INDUSTRY SIC SECTION NAMES (used for employees_industry which uses sic_section)
-INDUSTRY_SIC_NAMES <- c(
-  "A" = "Agriculture",
-  "B" = "Mining",
-  "C" = "Manufacturing",
-  "D" = "Electricity",
-  "E" = "Water",
-  "F" = "Construction",
-  "G" = "Retail",
-  "H" = "Transport",
-  "I" = "Hospitality",
-  "J" = "IT & Comms",
-  "K" = "Finance",
-  "L" = "Real Estate",
-  "M" = "Professional",
-  "N" = "Admin",
-  "O" = "Public Admin",
-  "P" = "Education",
-  "Q" = "Health",
-  "R" = "Arts",
-  "S" = "Other Services"
-)
 
 # ==============================================================================
 # STYLES
@@ -285,19 +272,16 @@ fetch_lfs_wide <- function() {
 }
 
 fetch_vacancies_wide <- function() {
-  query <- 'SELECT time_period, industry_section, value_type, value
+  query <- 'SELECT time_period, business_metric, value
             FROM "ons"."labour_market__vacancies_business"'
   raw <- fetch_db(query)
   if (nrow(raw) == 0) return(tibble())
 
   result <- raw %>%
-    mutate(
-      value = as.numeric(value),
-      col_name = paste(industry_section, value_type)
-    ) %>%
-    group_by(time_period, col_name) %>%
+    mutate(value = as.numeric(value)) %>%
+    group_by(time_period, business_metric) %>%
     summarise(value = first(value), .groups = "drop") %>%
-    pivot_wider(names_from = col_name, values_from = value) %>%
+    pivot_wider(names_from = business_metric, values_from = value) %>%
     rename(Date = time_period)
 
   sort_chronologically(result)
@@ -320,28 +304,23 @@ fetch_payroll_wide <- function() {
 }
 
 fetch_industry_wide <- function() {
-  query <- 'SELECT time_period, sic_section, value
+  query <- 'SELECT time_period, industry, value
             FROM "ons"."labour_market__employees_industry"'
   raw <- fetch_db(query)
   if (nrow(raw) == 0) return(tibble())
 
   result <- raw %>%
-    mutate(
-      value = as.numeric(value),
-      col_name = ifelse(sic_section %in% names(INDUSTRY_SIC_NAMES),
-                        paste0(sic_section, "-", INDUSTRY_SIC_NAMES[sic_section]),
-                        sic_section)
-    ) %>%
-    group_by(time_period, col_name) %>%
+    mutate(value = as.numeric(value)) %>%
+    group_by(time_period, industry) %>%
     summarise(value = first(value), .groups = "drop") %>%
-    pivot_wider(names_from = col_name, values_from = value) %>%
+    pivot_wider(names_from = industry, values_from = value) %>%
     rename(Date = time_period)
 
   sort_chronologically(result)
 }
 
 fetch_wages_total_wide <- function() {
-  query <- 'SELECT time_period, sector, metric_type, value
+  query <- 'SELECT time_period, sector, earnings_metric, time_basis, value
             FROM "ons"."labour_market__weekly_earnings_total"'
   raw <- fetch_db(query)
   if (nrow(raw) == 0) return(tibble())
@@ -349,7 +328,7 @@ fetch_wages_total_wide <- function() {
   result <- raw %>%
     mutate(
       value = as.numeric(value),
-      col_name = paste(sector, metric_type)
+      col_name = paste(sector, earnings_metric, time_basis)
     ) %>%
     group_by(time_period, col_name) %>%
     summarise(value = first(value), .groups = "drop") %>%
@@ -360,7 +339,7 @@ fetch_wages_total_wide <- function() {
 }
 
 fetch_wages_regular_wide <- function() {
-  query <- 'SELECT time_period, sector, metric_type, value
+  query <- 'SELECT time_period, sector, earnings_metric, time_basis, value
             FROM "ons"."labour_market__weekly_earnings_regular"'
   raw <- fetch_db(query)
   if (nrow(raw) == 0) return(tibble())
@@ -368,7 +347,7 @@ fetch_wages_regular_wide <- function() {
   result <- raw %>%
     mutate(
       value = as.numeric(value),
-      col_name = paste(sector, metric_type)
+      col_name = paste(sector, earnings_metric, time_basis)
     ) %>%
     group_by(time_period, col_name) %>%
     summarise(value = first(value), .groups = "drop") %>%
@@ -398,7 +377,7 @@ fetch_wages_cpi_wide <- function() {
 }
 
 fetch_inactivity_wide <- function() {
-  query <- 'SELECT time_period, inactivity_reason, value_type, wants_job, value
+  query <- 'SELECT time_period, inactivity_measure, inactivity_reason, value
             FROM "ons"."labour_market__inactivity"'
   raw <- fetch_db(query)
   if (nrow(raw) == 0) return(tibble())
@@ -406,7 +385,7 @@ fetch_inactivity_wide <- function() {
   result <- raw %>%
     mutate(
       value = as.numeric(value),
-      col_name = paste(inactivity_reason, value_type, wants_job)
+      col_name = paste(inactivity_measure, inactivity_reason)
     ) %>%
     group_by(time_period, col_name) %>%
     summarise(value = first(value), .groups = "drop") %>%
@@ -417,7 +396,7 @@ fetch_inactivity_wide <- function() {
 }
 
 fetch_redundancy_wide <- function() {
-  query <- 'SELECT time_period, sex, value_type, value
+  query <- 'SELECT time_period, population_group, value_type, value
             FROM "ons"."labour_market__redundancies"'
   raw <- fetch_db(query)
   if (nrow(raw) == 0) return(tibble())
@@ -425,7 +404,7 @@ fetch_redundancy_wide <- function() {
   result <- raw %>%
     mutate(
       value = as.numeric(value),
-      col_name = paste(sex, value_type)
+      col_name = paste(population_group, value_type)
     ) %>%
     group_by(time_period, col_name) %>%
     summarise(value = first(value), .groups = "drop") %>%
@@ -436,19 +415,16 @@ fetch_redundancy_wide <- function() {
 }
 
 fetch_days_lost_wide <- function() {
-  query <- 'SELECT time_period, metric_type, value
+  query <- 'SELECT time_period, dispute_type, value
             FROM "ons"."labour_market__disputes"'
   raw <- fetch_db(query)
   if (nrow(raw) == 0) return(tibble())
 
   result <- raw %>%
-    mutate(
-      value = as.numeric(value),
-      col_name = metric_type
-    ) %>%
-    group_by(time_period, col_name) %>%
+    mutate(value = as.numeric(value)) %>%
+    group_by(time_period, dispute_type) %>%
     summarise(value = first(value), .groups = "drop") %>%
-    pivot_wider(names_from = col_name, values_from = value) %>%
+    pivot_wider(names_from = dispute_type, values_from = value) %>%
     rename(Date = time_period)
 
   sort_chronologically(result)
@@ -846,8 +822,7 @@ create_audit_workbook <- function(output_path,
   wb <- build_data_sheet(wb, "23. Employees Industry", "Employees by Industry (SIC)",
                          data, "labour_market__employees_industry",
                          label_type = "payroll", anchor_date = payroll_anchor,
-                         covid_label = "February 2020", election_label = "June 2024",
-                         code_map = INDUSTRY_SIC_NAMES)
+                         covid_label = "February 2020", election_label = "June 2024")
 
   # 5. VACANCIES (Sheet "5" equivalent)
   if (verbose) message("Building: 5 (Vacancies)...")

@@ -535,41 +535,49 @@ fill_source_data <- function(wb, sheet, source_data, column_map,
       next
     }
 
-    # Look up the dataset code for this column name
-    dataset_code <- column_map[header_val]
-
-    # If not found, try case-insensitive match
-    if (is.na(dataset_code)) {
-      matching_names <- names(column_map)[tolower(names(column_map)) == tolower(header_val)]
-      if (length(matching_names) > 0) {
-        dataset_code <- column_map[matching_names[1]]
-      }
+    # PRIORITY 1: Check if header IS a dataset code directly (e.g., "MGRZ", "LF24")
+    # This allows ANY code from the database to work automatically
+    if (header_val %in% source_codes) {
+      dataset_code <- header_val
+    } else {
+      dataset_code <- NA
     }
 
-    # If still not found, try partial match
-    if (is.na(dataset_code)) {
-      matching_names <- names(column_map)[grepl(tolower(header_val), tolower(names(column_map)), fixed = TRUE)]
-      if (length(matching_names) > 0) {
-        dataset_code <- column_map[matching_names[1]]
-      }
-    }
+    # PRIORITY 2: Try column_map lookup (human-readable names)
+    if (is.na(dataset_code) && !is.null(column_map) && length(column_map) > 0) {
+      # Exact match
+      dataset_code <- column_map[header_val]
 
-    # If no column_map provided, try direct matching
-    if (is.null(column_map) || length(column_map) == 0) {
-      # Try direct match with source columns
-      if (header_val %in% source_codes) {
-        dataset_code <- header_val
-      } else {
-        # Try case-insensitive
-        matching_cols <- source_codes[tolower(source_codes) == tolower(header_val)]
-        if (length(matching_cols) > 0) {
-          dataset_code <- matching_cols[1]
-        } else {
-          next
+      # Case-insensitive match
+      if (is.na(dataset_code)) {
+        matching_names <- names(column_map)[tolower(names(column_map)) == tolower(header_val)]
+        if (length(matching_names) > 0) {
+          dataset_code <- column_map[matching_names[1]]
         }
       }
-    } else if (is.na(dataset_code)) {
-      # Had a column_map but no match found, skip
+
+      # Partial match (header contains map key or vice versa)
+      if (is.na(dataset_code)) {
+        for (map_name in names(column_map)) {
+          if (grepl(tolower(map_name), tolower(header_val), fixed = TRUE) ||
+              grepl(tolower(header_val), tolower(map_name), fixed = TRUE)) {
+            dataset_code <- column_map[map_name]
+            break
+          }
+        }
+      }
+    }
+
+    # PRIORITY 3: Case-insensitive direct match against source codes
+    if (is.na(dataset_code)) {
+      matching_cols <- source_codes[tolower(source_codes) == tolower(header_val)]
+      if (length(matching_cols) > 0) {
+        dataset_code <- matching_cols[1]
+      }
+    }
+
+    # Skip if still no match
+    if (is.na(dataset_code)) {
       next
     }
 

@@ -2,18 +2,16 @@
 # LABOUR MARKET STATISTICS BRIEF - SHINY APPLICATION
 # ==============================================================================
 # GOV.UK Design System styled application for generating Labour Market briefings
+# Uses Shiny's built-in withProgress for reliable progress indicators
 # ==============================================================================
 
 library(shiny)
-library(shinyjs)
 
 # ==============================================================================
 # UI - GOV.UK DESIGN SYSTEM
 # ==============================================================================
 
 ui <- fluidPage(
-
-  useShinyjs(),
 
   # Page title
   tags$head(
@@ -141,6 +139,12 @@ ui <- fluidPage(
       }
       .govuk-button--secondary:hover { background-color: #dbdad9; }
 
+      .govuk-button--warning {
+        background-color: #d4351c;
+        box-shadow: 0 2px 0 #6e1509;
+      }
+      .govuk-button--warning:hover { background-color: #aa2a16; }
+
       .govuk-button.shiny-download-link { text-decoration: none; }
 
       .govuk-form-group { margin-bottom: 30px; }
@@ -191,6 +195,10 @@ ui <- fluidPage(
         margin-right: 10px;
       }
 
+      .govuk-tag--green {
+        background-color: #00703c;
+      }
+
       .dashboard-card {
         background-color: #ffffff;
         border: 1px solid #b1b4b6;
@@ -238,115 +246,35 @@ ui <- fluidPage(
 
       .container-fluid { padding: 0 !important; margin: 0 !important; max-width: none !important; }
 
-      /* PROGRESS TRACKER */
-      .progress-tracker {
-        background: #ffffff;
-        border: 2px solid #1d70b8;
-        padding: 20px;
-        margin-bottom: 20px;
-        display: none;
-      }
-
-      .progress-tracker.visible { display: block; }
-
-      .progress-tracker__title {
-        font-weight: 700;
-        font-size: 19px;
-        margin: 0 0 15px 0;
-        color: #0b0c0c;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-      }
-
-      .progress-tracker__spinner {
+      /* Month confirmation status */
+      .month-status {
         display: inline-block;
-        width: 24px;
-        height: 24px;
-        border: 3px solid #1d70b8;
-        border-radius: 50%;
-        border-top-color: transparent;
-        animation: spin 1s linear infinite;
-      }
-
-      @keyframes spin { to { transform: rotate(360deg); } }
-
-      .progress-step {
-        display: flex;
-        align-items: center;
-        padding: 8px 0;
-        border-bottom: 1px solid #f3f2f1;
+        padding: 5px 10px;
+        margin-left: 10px;
         font-size: 16px;
+        border-radius: 3px;
       }
 
-      .progress-step:last-child { border-bottom: none; }
+      .month-status--confirmed {
+        background-color: #00703c;
+        color: #ffffff;
+      }
 
-      .progress-step__icon {
-        width: 28px;
-        height: 28px;
-        margin-right: 12px;
+      .month-status--pending {
+        background-color: #f47738;
+        color: #ffffff;
+      }
+
+      /* Input row with button */
+      .input-row {
         display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 50%;
-        font-size: 14px;
-        font-weight: 700;
-        flex-shrink: 0;
+        align-items: flex-end;
+        gap: 15px;
+        flex-wrap: wrap;
       }
 
-      .progress-step--pending .progress-step__icon {
-        background-color: #f3f2f1;
-        color: #505a5f;
-        border: 2px solid #b1b4b6;
-      }
-
-      .progress-step--active .progress-step__icon {
-        background-color: #1d70b8;
-        color: #ffffff;
-        border: 2px solid #1d70b8;
-        animation: pulse 1s ease-in-out infinite;
-      }
-
-      @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-
-      .progress-step--complete .progress-step__icon {
-        background-color: #00703c;
-        color: #ffffff;
-        border: 2px solid #00703c;
-      }
-
-      .progress-step--error .progress-step__icon {
-        background-color: #d4351c;
-        color: #ffffff;
-        border: 2px solid #d4351c;
-      }
-
-      .progress-step--pending .progress-step__text { color: #505a5f; }
-      .progress-step--active .progress-step__text { color: #0b0c0c; font-weight: 600; }
-      .progress-step--complete .progress-step__text { color: #00703c; }
-      .progress-step--error .progress-step__text { color: #d4351c; }
-
-      .progress-bar-container {
-        background-color: #f3f2f1;
-        height: 8px;
-        border-radius: 4px;
-        margin-top: 15px;
-        overflow: hidden;
-      }
-
-      .progress-bar {
-        height: 100%;
-        background-color: #00703c;
-        border-radius: 4px;
-        transition: width 0.3s ease;
-        width: 0%;
-      }
-
-      .progress-percentage {
-        text-align: right;
-        font-size: 14px;
-        color: #505a5f;
-        margin-top: 5px;
+      .input-row .govuk-form-group {
+        margin-bottom: 0;
       }
 
       /* Stats table */
@@ -410,6 +338,44 @@ ui <- fluidPage(
 
       .govuk-list { padding-left: 20px; }
       .govuk-list li { margin-bottom: 5px; }
+
+      /* Shiny progress bar customization */
+      .shiny-notification {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 400px;
+        background: #ffffff;
+        border: 3px solid #1d70b8;
+        border-radius: 0;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        padding: 20px;
+        z-index: 99999;
+      }
+
+      .shiny-notification-message {
+        font-family: 'Source Sans Pro', Arial, sans-serif;
+        font-size: 16px;
+        color: #0b0c0c;
+        margin-bottom: 15px;
+      }
+
+      .shiny-notification .progress {
+        height: 10px;
+        background-color: #f3f2f1;
+        border-radius: 0;
+        margin-top: 10px;
+      }
+
+      .shiny-notification .progress-bar {
+        background-color: #00703c;
+        border-radius: 0;
+      }
+
+      .shiny-notification-close {
+        display: none;
+      }
     "))
   ),
 
@@ -441,11 +407,16 @@ ui <- fluidPage(
       div(class = "dashboard-card",
         div(class = "dashboard-card__header", "Configuration"),
         div(class = "dashboard-card__content",
-          div(class = "govuk-form-group",
-            tags$label(class = "govuk-label", `for` = "manual_month", "Reference month"),
-            div(class = "govuk-hint", "Format: dec2025"),
-            tags$input(class = "govuk-input", id = "manual_month", name = "manual_month", type = "text")
-          )
+          div(class = "input-row",
+            div(class = "govuk-form-group",
+              tags$label(class = "govuk-label", `for` = "manual_month", "Reference month"),
+              div(class = "govuk-hint", "Format: dec2025"),
+              tags$input(class = "govuk-input", id = "manual_month", name = "manual_month", type = "text")
+            ),
+            actionButton("confirm_month", "Confirm Month", class = "govuk-button govuk-button--warning",
+                         style = "margin-bottom: 0;")
+          ),
+          uiOutput("month_status")
         )
       ),
 
@@ -465,19 +436,6 @@ ui <- fluidPage(
           downloadButton("download_word", "Download Word Document", class = "govuk-button"),
           downloadButton("download_excel", "Download Excel Workbook", class = "govuk-button govuk-button--secondary")
         )
-      ),
-
-      # Progress Tracker (hidden by default, shown via JS)
-      div(id = "progress_tracker", class = "progress-tracker",
-        div(class = "progress-tracker__title",
-          span(id = "progress_spinner", class = "progress-tracker__spinner"),
-          span(id = "progress_title", "Processing...")
-        ),
-        div(id = "progress_steps"),
-        div(class = "progress-bar-container",
-          div(id = "progress_bar", class = "progress-bar")
-        ),
-        div(id = "progress_percentage", class = "progress-percentage", "0% complete")
       ),
 
       # Preview sections
@@ -524,6 +482,7 @@ server <- function(input, output, session) {
   # Reactive values
   dashboard_data <- reactiveVal(NULL)
   topten_data <- reactiveVal(NULL)
+  confirmed_month <- reactiveVal(NULL)
 
   # Load default month from config
   observe({
@@ -539,49 +498,42 @@ server <- function(input, output, session) {
   })
 
   # ============================================================================
-  # PROGRESS HELPER FUNCTIONS (JavaScript-based for real-time updates)
+  # CONFIRM MONTH BUTTON
   # ============================================================================
 
-  showProgress <- function(title, steps) {
-    steps_html <- paste(sapply(seq_along(steps), function(i) {
-      sprintf('<div class="progress-step progress-step--pending" id="step_%d">
-                 <div class="progress-step__icon">%d</div>
-                 <div class="progress-step__text">%s</div>
-               </div>', i, i, steps[i])
-    }), collapse = "")
+  observeEvent(input$confirm_month, {
+    month_val <- input$manual_month
+    if (nzchar(month_val)) {
+      confirmed_month(tolower(month_val))
+      showNotification(
+        paste("Month confirmed:", tolower(month_val)),
+        type = "message",
+        duration = 3
+      )
+    } else {
+      showNotification(
+        "Please enter a month value first (e.g., dec2025)",
+        type = "warning",
+        duration = 3
+      )
+    }
+  })
 
-    runjs(sprintf("
-      $('#progress_title').text('%s');
-      $('#progress_steps').html('%s');
-      $('#progress_bar').css('width', '0%%');
-      $('#progress_percentage').text('0%% complete');
-      $('#progress_spinner').show();
-      $('#progress_tracker').addClass('visible');
-    ", title, gsub("'", "\\\\'", steps_html)))
-  }
-
-  updateStep <- function(step_num, status, percent) {
-    icon_content <- if (status == "complete") "&#10003;" else if (status == "error") "&#10007;" else step_num
-
-    runjs(sprintf("
-      $('#step_%d').removeClass('progress-step--pending progress-step--active progress-step--complete progress-step--error')
-                   .addClass('progress-step--%s');
-      $('#step_%d .progress-step__icon').html('%s');
-      $('#progress_bar').css('width', '%d%%');
-      $('#progress_percentage').text('%d%% complete');
-    ", step_num, status, step_num, icon_content, percent, percent))
-  }
-
-  hideProgress <- function(delay_ms = 2000) {
-    runjs(sprintf("
-      $('#progress_spinner').hide();
-      setTimeout(function() { $('#progress_tracker').removeClass('visible'); }, %d);
-    ", delay_ms))
-  }
-
-  setProgressTitle <- function(title) {
-    runjs(sprintf("$('#progress_title').text('%s');", gsub("'", "\\\\'", title)))
-  }
+  # Month status display
+  output$month_status <- renderUI({
+    cm <- confirmed_month()
+    if (!is.null(cm)) {
+      div(style = "margin-top: 15px;",
+        span(class = "govuk-tag govuk-tag--green", "CONFIRMED"),
+        span(style = "margin-left: 10px; font-weight: 600;", paste("Reference month:", cm))
+      )
+    } else {
+      div(style = "margin-top: 15px;",
+        span(class = "govuk-tag", style = "background-color: #f47738;", "PENDING"),
+        span(style = "margin-left: 10px; color: #505a5f;", "Click 'Confirm Month' to set the reference month")
+      )
+    }
+  })
 
   # ============================================================================
   # PREVIEW: DASHBOARD
@@ -589,34 +541,17 @@ server <- function(input, output, session) {
 
   observeEvent(input$preview_dashboard, {
 
-    steps <- c(
-      "Checking configuration files",
-      "Loading configuration",
-      "Setting reference month",
-      "Running calculations",
-      "Building metrics table",
-      "Finalizing dashboard"
-    )
+    withProgress(message = "Loading Dashboard Data", value = 0, {
 
-    showProgress("Loading Dashboard Data", steps)
-
-    tryCatch({
-
-      # Step 1
-      updateStep(1, "active", 5)
+      incProgress(0.1, detail = "Step 1/6: Checking configuration files...")
       Sys.sleep(0.3)
 
       if (!file.exists(calculations_path)) {
-        updateStep(1, "error", 5)
-        setProgressTitle("Error: calculations.R not found")
-        hideProgress(3000)
+        showNotification("Error: calculations.R not found", type = "error")
         return()
       }
 
-      updateStep(1, "complete", 15)
-
-      # Step 2
-      updateStep(2, "active", 20)
+      incProgress(0.15, detail = "Step 2/6: Loading configuration...")
       Sys.sleep(0.2)
 
       calc_env <- new.env(parent = globalenv())
@@ -625,27 +560,26 @@ server <- function(input, output, session) {
         source(config_path, local = calc_env)
       }
 
-      updateStep(2, "complete", 30)
-
-      # Step 3
-      updateStep(3, "active", 35)
+      incProgress(0.15, detail = "Step 3/6: Setting reference month...")
       Sys.sleep(0.2)
 
-      if (nzchar(input$manual_month)) {
+      cm <- confirmed_month()
+      if (!is.null(cm)) {
+        calc_env$manual_month <- cm
+      } else if (nzchar(input$manual_month)) {
         calc_env$manual_month <- tolower(input$manual_month)
       }
 
-      updateStep(3, "complete", 45)
+      incProgress(0.2, detail = "Step 4/6: Running calculations...")
 
-      # Step 4
-      updateStep(4, "active", 50)
+      tryCatch({
+        source(calculations_path, local = calc_env)
+      }, error = function(e) {
+        showNotification(paste("Calculation error:", e$message), type = "error", duration = 5)
+        return()
+      })
 
-      source(calculations_path, local = calc_env)
-
-      updateStep(4, "complete", 70)
-
-      # Step 5
-      updateStep(5, "active", 75)
+      incProgress(0.2, detail = "Step 5/6: Building metrics table...")
       Sys.sleep(0.2)
 
       gv <- function(name) {
@@ -671,22 +605,13 @@ server <- function(input, output, session) {
         list(name = "Wages CPI-adjusted (%)", cur = gv("latest_wages_cpi"), dq = gv("wages_cpi_change_q"), dy = gv("wages_cpi_change_y"), dc = gv("wages_cpi_change_covid"), de = gv("wages_cpi_change_election"), invert = FALSE, type = "wages")
       )
 
-      updateStep(5, "complete", 90)
-
-      # Step 6
-      updateStep(6, "active", 95)
+      incProgress(0.2, detail = "Step 6/6: Finalizing dashboard...")
       Sys.sleep(0.2)
 
       dashboard_data(metrics)
-
-      updateStep(6, "complete", 100)
-      setProgressTitle("Dashboard Loaded Successfully")
-      hideProgress()
-
-    }, error = function(e) {
-      setProgressTitle(paste("Error:", e$message))
-      hideProgress(5000)
     })
+
+    showNotification("Dashboard loaded successfully!", type = "message", duration = 3)
   })
 
   # ============================================================================
@@ -695,92 +620,63 @@ server <- function(input, output, session) {
 
   observeEvent(input$preview_topten, {
 
-    steps <- c(
-      "Checking required files",
-      "Loading configuration",
-      "Setting reference month",
-      "Running calculations",
-      "Loading top ten generator",
-      "Generating statistics"
-    )
+    withProgress(message = "Loading Top Ten Statistics", value = 0, {
 
-    showProgress("Loading Top Ten Statistics", steps)
-
-    tryCatch({
-
-      # Step 1
-      updateStep(1, "active", 5)
+      incProgress(0.1, detail = "Step 1/6: Checking required files...")
       Sys.sleep(0.3)
 
       if (!file.exists(calculations_path)) {
-        updateStep(1, "error", 5)
-        setProgressTitle("Error: calculations.R not found")
-        hideProgress(3000)
+        showNotification("Error: calculations.R not found", type = "error")
         return()
       }
 
       if (!file.exists(top_ten_path)) {
-        updateStep(1, "error", 5)
-        setProgressTitle("Error: top_ten_stats.R not found")
-        hideProgress(3000)
+        showNotification("Error: top_ten_stats.R not found", type = "error")
         return()
       }
 
-      updateStep(1, "complete", 15)
-
-      # Step 2
-      updateStep(2, "active", 20)
+      incProgress(0.15, detail = "Step 2/6: Loading configuration...")
       Sys.sleep(0.2)
 
       if (file.exists(config_path)) {
         source(config_path, local = FALSE)
       }
 
-      updateStep(2, "complete", 35)
-
-      # Step 3
-      updateStep(3, "active", 40)
+      incProgress(0.15, detail = "Step 3/6: Setting reference month...")
       Sys.sleep(0.2)
 
-      if (nzchar(input$manual_month)) {
+      cm <- confirmed_month()
+      if (!is.null(cm)) {
+        manual_month <<- cm
+      } else if (nzchar(input$manual_month)) {
         manual_month <<- tolower(input$manual_month)
       }
 
-      updateStep(3, "complete", 50)
+      incProgress(0.2, detail = "Step 4/6: Running calculations...")
 
-      # Step 4
-      updateStep(4, "active", 55)
+      tryCatch({
+        source(calculations_path, local = FALSE)
+      }, error = function(e) {
+        showNotification(paste("Calculation error:", e$message), type = "error", duration = 5)
+        return()
+      })
 
-      source(calculations_path, local = FALSE)
-
-      updateStep(4, "complete", 70)
-
-      # Step 5
-      updateStep(5, "active", 75)
+      incProgress(0.2, detail = "Step 5/6: Loading top ten generator...")
 
       source(top_ten_path, local = FALSE)
 
-      updateStep(5, "complete", 85)
-
-      # Step 6
-      updateStep(6, "active", 90)
+      incProgress(0.2, detail = "Step 6/6: Generating statistics...")
 
       if (exists("generate_top_ten")) {
         top10 <- generate_top_ten()
         topten_data(top10)
-        updateStep(6, "complete", 100)
-        setProgressTitle("Top Ten Statistics Loaded Successfully")
       } else {
-        updateStep(6, "error", 90)
-        setProgressTitle("Error: generate_top_ten function not found")
+        showNotification("Error: generate_top_ten function not found", type = "error")
+        return()
       }
-
-      hideProgress()
-
-    }, error = function(e) {
-      setProgressTitle(paste("Error:", e$message))
-      hideProgress(5000)
     })
+
+    showNotification("Top Ten statistics loaded successfully!", type = "message", duration = 3)
   })
 
   # ============================================================================
@@ -793,40 +689,22 @@ server <- function(input, output, session) {
     },
     content = function(file) {
 
-      steps <- c(
-        "Checking officer package",
-        "Locating template file",
-        "Loading word output script",
-        "Running calculations",
-        "Generating document content",
-        "Writing Word file"
-      )
+      withProgress(message = "Generating Word Document", value = 0, {
 
-      showProgress("Generating Word Document", steps)
-
-      tryCatch({
-
-        # Step 1
-        updateStep(1, "active", 5)
+        incProgress(0.15, detail = "Step 1/6: Checking officer package...")
         Sys.sleep(0.2)
 
         if (!requireNamespace("officer", quietly = TRUE)) {
-          updateStep(1, "error", 5)
-          setProgressTitle("Error: officer package not installed")
+          showNotification("Error: officer package not installed", type = "error")
           writeLines("Error: officer package required", file)
-          hideProgress(3000)
           return()
         }
 
-        updateStep(1, "complete", 15)
-
-        # Step 2
-        updateStep(2, "active", 20)
+        incProgress(0.15, detail = "Step 2/6: Locating template file...")
         Sys.sleep(0.2)
 
         if (!file.exists(template_path)) {
-          updateStep(2, "error", 20)
-          setProgressTitle("Warning: Template not found - creating basic document")
+          incProgress(0.7, detail = "Creating basic document (no template)...")
 
           doc <- officer::read_docx()
           doc <- officer::body_add_par(doc, "Labour Market Statistics Brief", style = "heading 1")
@@ -834,65 +712,50 @@ server <- function(input, output, session) {
           doc <- officer::body_add_par(doc, "Note: Template file (utils/DB.docx) not found.")
           print(doc, target = file)
 
-          updateStep(6, "complete", 100)
-          hideProgress()
+          showNotification("Word document created (basic - no template)", type = "warning", duration = 3)
           return()
         }
 
-        updateStep(2, "complete", 30)
-
-        # Step 3
-        updateStep(3, "active", 35)
+        incProgress(0.2, detail = "Step 3/6: Loading word output script...")
 
         source(word_script_path, local = FALSE)
 
-        updateStep(3, "complete", 50)
+        incProgress(0.2, detail = "Step 4/6: Running calculations...")
 
-        # Step 4
-        updateStep(4, "active", 55)
-        updateStep(4, "complete", 65)
+        incProgress(0.15, detail = "Step 5/6: Generating document content...")
 
-        # Step 5
-        updateStep(5, "active", 70)
-        updateStep(5, "complete", 85)
+        incProgress(0.15, detail = "Step 6/6: Writing Word file...")
 
-        # Step 6
-        updateStep(6, "active", 90)
-
-        generate_word_output(
-          template_path = template_path,
-          output_path = file,
-          calculations_path = calculations_path,
-          config_path = config_path,
-          summary_path = summary_path,
-          top_ten_path = top_ten_path,
-          manual_month_override = if (nzchar(input$manual_month)) input$manual_month else NULL,
-          verbose = FALSE
-        )
-
-        updateStep(6, "complete", 100)
-        setProgressTitle("Word Document Generated Successfully")
-        hideProgress()
-
-      }, error = function(e) {
-        setProgressTitle(paste("Error:", e$message))
+        cm <- confirmed_month()
+        month_override <- if (!is.null(cm)) cm else if (nzchar(input$manual_month)) input$manual_month else NULL
 
         tryCatch({
+          generate_word_output(
+            template_path = template_path,
+            output_path = file,
+            calculations_path = calculations_path,
+            config_path = config_path,
+            summary_path = summary_path,
+            top_ten_path = top_ten_path,
+            manual_month_override = month_override,
+            verbose = FALSE
+          )
+        }, error = function(e) {
+          # Create error document
           doc <- officer::read_docx()
           doc <- officer::body_add_par(doc, "Error Generating Document", style = "heading 1")
           doc <- officer::body_add_par(doc, paste("Error:", e$message))
           print(doc, target = file)
-        }, error = function(e2) {
-          writeLines(paste("Error:", e$message), file)
+          showNotification(paste("Word error:", e$message), type = "error", duration = 5)
         })
-
-        hideProgress(5000)
       })
+
+      showNotification("Word document generated!", type = "message", duration = 3)
     }
   )
 
   # ============================================================================
-  # DOWNLOAD: EXCEL
+  # DOWNLOAD: EXCEL - Simplified version using calculations data
   # ============================================================================
 
   output$download_excel <- downloadHandler(
@@ -901,102 +764,199 @@ server <- function(input, output, session) {
     },
     content = function(file) {
 
-      steps <- c(
-        "Checking openxlsx package",
-        "Locating excel script",
-        "Loading configuration",
-        "Running calculations",
-        "Building worksheets",
-        "Writing Excel file"
-      )
+      withProgress(message = "Generating Excel Workbook", value = 0, {
 
-      showProgress("Generating Excel Workbook", steps)
-
-      tryCatch({
-
-        # Step 1
-        updateStep(1, "active", 5)
+        incProgress(0.1, detail = "Step 1/6: Checking openxlsx package...")
         Sys.sleep(0.2)
 
         if (!requireNamespace("openxlsx", quietly = TRUE)) {
-          updateStep(1, "error", 5)
-          setProgressTitle("Error: openxlsx package not installed")
-          hideProgress(3000)
+          showNotification("Error: openxlsx package not installed", type = "error")
           return()
         }
 
-        updateStep(1, "complete", 15)
-
-        # Step 2
-        updateStep(2, "active", 20)
+        incProgress(0.15, detail = "Step 2/6: Loading configuration...")
         Sys.sleep(0.2)
 
-        if (!file.exists(excel_script_path)) {
-          updateStep(2, "error", 20)
-          setProgressTitle("Error: excel_audit.R not found")
+        calc_env <- new.env(parent = globalenv())
 
+        if (file.exists(config_path)) {
+          source(config_path, local = calc_env)
+        }
+
+        cm <- confirmed_month()
+        if (!is.null(cm)) {
+          calc_env$manual_month <- cm
+        } else if (nzchar(input$manual_month)) {
+          calc_env$manual_month <- tolower(input$manual_month)
+        }
+
+        incProgress(0.2, detail = "Step 3/6: Running calculations...")
+
+        tryCatch({
+          source(calculations_path, local = calc_env)
+        }, error = function(e) {
+          showNotification(paste("Calculation error:", e$message), type = "error", duration = 5)
+          # Create error workbook
           wb <- openxlsx::createWorkbook()
           openxlsx::addWorksheet(wb, "Error")
-          openxlsx::writeData(wb, "Error", data.frame(Error = "excel_audit.R not found"))
+          openxlsx::writeData(wb, "Error", data.frame(Error = e$message))
           openxlsx::saveWorkbook(wb, file, overwrite = TRUE)
-
-          hideProgress(3000)
           return()
+        })
+
+        incProgress(0.2, detail = "Step 4/6: Building Dashboard sheet...")
+
+        # Create workbook
+        wb <- openxlsx::createWorkbook()
+
+        # Helper to get values
+        gv <- function(name) {
+          if (exists(name, envir = calc_env)) {
+            val <- get(name, envir = calc_env)
+            if (is.numeric(val)) return(val)
+          }
+          NA_real_
         }
 
-        updateStep(2, "complete", 30)
+        # Add Dashboard sheet
+        openxlsx::addWorksheet(wb, "Dashboard")
 
-        # Step 3
-        updateStep(3, "active", 35)
-        Sys.sleep(0.2)
+        # Title
+        openxlsx::writeData(wb, "Dashboard", "Labour Market Statistics - Key Metrics", startRow = 1, startCol = 1)
 
-        if (nzchar(input$manual_month)) {
-          manual_month <<- tolower(input$manual_month)
+        # Get period label
+        period_label <- if (exists("lfs_period_label", envir = calc_env)) {
+          get("lfs_period_label", envir = calc_env)
+        } else {
+          format(Sys.Date(), "%B %Y")
         }
 
-        updateStep(3, "complete", 45)
+        openxlsx::writeData(wb, "Dashboard", paste("Period:", period_label), startRow = 2, startCol = 1)
+        openxlsx::writeData(wb, "Dashboard", paste("Generated:", format(Sys.time(), "%d %B %Y %H:%M")), startRow = 3, startCol = 1)
 
-        # Step 4
-        updateStep(4, "active", 50)
+        # Headers
+        headers <- c("Metric", "Current", "Change on Qtr", "Change on Year", "Change since Covid", "Change since Election")
+        for (i in seq_along(headers)) {
+          openxlsx::writeData(wb, "Dashboard", headers[i], startRow = 5, startCol = i)
+        }
 
-        source(excel_script_path, local = FALSE)
+        # Header style
+        header_style <- openxlsx::createStyle(
+          fontColour = "#FFFFFF", fgFill = "#0C275C", halign = "center",
+          textDecoration = "bold", border = "TopBottomLeftRight"
+        )
+        openxlsx::addStyle(wb, "Dashboard", header_style, rows = 5, cols = 1:6, gridExpand = TRUE)
 
-        updateStep(4, "complete", 65)
+        incProgress(0.15, detail = "Step 5/6: Writing metrics data...")
 
-        # Step 5
-        updateStep(5, "active", 70)
-        updateStep(5, "complete", 85)
-
-        # Step 6
-        updateStep(6, "active", 90)
-
-        create_audit_workbook(
-          output_path = file,
-          calculations_path = calculations_path,
-          config_path = config_path,
-          verbose = FALSE
+        # Metrics data
+        metrics_data <- data.frame(
+          Metric = c(
+            "Employment 16+ (000s)",
+            "Employment rate 16-64 (%)",
+            "Unemployment 16+ (000s)",
+            "Unemployment rate 16+ (%)",
+            "Inactivity 16-64 (000s)",
+            "Inactivity 50-64 (000s)",
+            "Inactivity rate 16-64 (%)",
+            "Inactivity rate 50-64 (%)",
+            "Vacancies (000s)",
+            "Payroll employees (000s)",
+            "Wages total pay (%)",
+            "Wages CPI-adjusted (%)"
+          ),
+          Current = c(
+            round(gv("emp16_cur") / 1000),
+            round(gv("emp_rt_cur"), 1),
+            round(gv("unemp16_cur") / 1000),
+            round(gv("unemp_rt_cur"), 1),
+            round(gv("inact_cur") / 1000),
+            round(gv("inact5064_cur") / 1000),
+            round(gv("inact_rt_cur"), 1),
+            round(gv("inact5064_rt_cur"), 1),
+            round(gv("vac_cur")),
+            round(gv("payroll_cur")),
+            round(gv("latest_wages"), 1),
+            round(gv("latest_wages_cpi"), 1)
+          ),
+          ChangeQtr = c(
+            round(gv("emp16_dq") / 1000),
+            round(gv("emp_rt_dq"), 1),
+            round(gv("unemp16_dq") / 1000),
+            round(gv("unemp_rt_dq"), 1),
+            round(gv("inact_dq") / 1000),
+            round(gv("inact5064_dq") / 1000),
+            round(gv("inact_rt_dq"), 1),
+            round(gv("inact5064_rt_dq"), 1),
+            round(gv("vac_dq")),
+            round(gv("payroll_dq")),
+            round(gv("wages_change_q"), 1),
+            round(gv("wages_cpi_change_q"), 1)
+          ),
+          ChangeYear = c(
+            round(gv("emp16_dy") / 1000),
+            round(gv("emp_rt_dy"), 1),
+            round(gv("unemp16_dy") / 1000),
+            round(gv("unemp_rt_dy"), 1),
+            round(gv("inact_dy") / 1000),
+            round(gv("inact5064_dy") / 1000),
+            round(gv("inact_rt_dy"), 1),
+            round(gv("inact5064_rt_dy"), 1),
+            round(gv("vac_dy")),
+            round(gv("payroll_dy")),
+            round(gv("wages_change_y"), 1),
+            round(gv("wages_cpi_change_y"), 1)
+          ),
+          ChangeCovid = c(
+            round(gv("emp16_dc") / 1000),
+            round(gv("emp_rt_dc"), 1),
+            round(gv("unemp16_dc") / 1000),
+            round(gv("unemp_rt_dc"), 1),
+            round(gv("inact_dc") / 1000),
+            round(gv("inact5064_dc") / 1000),
+            round(gv("inact_rt_dc"), 1),
+            round(gv("inact5064_rt_dc"), 1),
+            round(gv("vac_dc")),
+            round(gv("payroll_dc")),
+            round(gv("wages_change_covid"), 1),
+            round(gv("wages_cpi_change_covid"), 1)
+          ),
+          ChangeElection = c(
+            round(gv("emp16_de") / 1000),
+            round(gv("emp_rt_de"), 1),
+            round(gv("unemp16_de") / 1000),
+            round(gv("unemp_rt_de"), 1),
+            round(gv("inact_de") / 1000),
+            round(gv("inact5064_de") / 1000),
+            round(gv("inact_rt_de"), 1),
+            round(gv("inact5064_rt_de"), 1),
+            round(gv("vac_de")),
+            round(gv("payroll_de")),
+            round(gv("wages_change_election"), 1),
+            round(gv("wages_cpi_change_election"), 1)
+          ),
+          stringsAsFactors = FALSE
         )
 
-        updateStep(6, "complete", 100)
-        setProgressTitle("Excel Workbook Generated Successfully")
-        hideProgress()
+        openxlsx::writeData(wb, "Dashboard", metrics_data, startRow = 6, startCol = 1, colNames = FALSE)
 
-      }, error = function(e) {
-        setProgressTitle(paste("Error:", e$message))
+        # Data style
+        data_style <- openxlsx::createStyle(border = "TopBottomLeftRight", halign = "center")
+        metric_style <- openxlsx::createStyle(border = "TopBottomLeftRight", halign = "left", textDecoration = "bold")
+        openxlsx::addStyle(wb, "Dashboard", metric_style, rows = 6:17, cols = 1, gridExpand = TRUE)
+        openxlsx::addStyle(wb, "Dashboard", data_style, rows = 6:17, cols = 2:6, gridExpand = TRUE)
 
-        # Create error workbook
-        tryCatch({
-          wb <- openxlsx::createWorkbook()
-          openxlsx::addWorksheet(wb, "Error")
-          openxlsx::writeData(wb, "Error", data.frame(
-            Error = c("Error generating workbook:", e$message),
-            Solution = c("Check database connection", "Ensure all required packages are installed")
-          ))
-          openxlsx::saveWorkbook(wb, file, overwrite = TRUE)
-        }, error = function(e2) NULL)
+        # Column widths
+        openxlsx::setColWidths(wb, "Dashboard", cols = 1, widths = 30)
+        openxlsx::setColWidths(wb, "Dashboard", cols = 2:6, widths = 18)
 
-        hideProgress(5000)
+        incProgress(0.2, detail = "Step 6/6: Saving workbook...")
+
+        # Save
+        openxlsx::saveWorkbook(wb, file, overwrite = TRUE)
       })
+
+      showNotification("Excel workbook generated!", type = "message", duration = 3)
     }
   )
 

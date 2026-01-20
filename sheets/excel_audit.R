@@ -800,8 +800,9 @@ build_payroll_sheet <- function(wb, sheet_name, title, data, source_info = NULL,
   value_cols <- setdiff(names(data), "Date")
   n_cols <- length(value_cols)
 
-  # Data table starts lower to make room for 3 summary tables
-  data_start <- 15
+  # Data table starts lower to make room for 3 vertical summary tables
+  # Each table has 6 rows (header + 5 data rows) plus 1 gap row
+  data_start <- 28
 
   writeData(wb, sheet_name, "Source Data", startRow = data_start - 1, startCol = 1)
   addStyle(wb, sheet_name, createStyle(textDecoration = "bold", fontSize = 11), rows = data_start - 1, cols = 1)
@@ -809,8 +810,7 @@ build_payroll_sheet <- function(wb, sheet_name, title, data, source_info = NULL,
   writeData(wb, sheet_name, data, startRow = data_start, startCol = 1,
             colNames = TRUE, headerStyle = style_data_header)
 
-  # Summary section with 3 tables
-  summary_start <- 5
+  # Summary section with 3 tables stacked vertically
   can_calc_summary <- !is.null(anchor_date)
 
   if (can_calc_summary) {
@@ -862,15 +862,15 @@ build_payroll_sheet <- function(wb, sheet_name, title, data, source_info = NULL,
     row_covid <- to_excel_row(find_data_row(lab_covid))
     row_election <- to_excel_row(find_data_row(lab_election))
 
-    # Helper to write a summary table
-    write_summary_table <- function(start_col, table_title, current_formula_fn, compare_formula_fn) {
-      # Header
-      writeData(wb, sheet_name, table_title, startRow = summary_start, startCol = start_col)
+    # Helper to write a summary table (vertically stacked, columns align with data)
+    write_summary_table <- function(start_row, table_title, current_formula_fn, compare_formula_fn) {
+      # Header row
+      writeData(wb, sheet_name, table_title, startRow = start_row, startCol = 1)
       for (i in seq_along(value_cols)) {
-        writeData(wb, sheet_name, value_cols[i], startRow = summary_start, startCol = start_col + i)
+        writeData(wb, sheet_name, value_cols[i], startRow = start_row, startCol = i + 1)
       }
-      addStyle(wb, sheet_name, style_summary_header, rows = summary_start,
-               cols = start_col:(start_col + n_cols), gridExpand = TRUE)
+      addStyle(wb, sheet_name, style_summary_header, rows = start_row,
+               cols = 1:(n_cols + 1), gridExpand = TRUE)
 
       # Row labels
       row_labels <- c(
@@ -882,17 +882,16 @@ build_payroll_sheet <- function(wb, sheet_name, title, data, source_info = NULL,
       )
 
       for (s in 1:5) {
-        row_num <- summary_start + s
-        writeData(wb, sheet_name, row_labels[s], startRow = row_num, startCol = start_col)
+        row_num <- start_row + s
+        writeData(wb, sheet_name, row_labels[s], startRow = row_num, startCol = 1)
 
         if (s == 5) {
-          addStyle(wb, sheet_name, style_election_label, rows = row_num, cols = start_col)
+          addStyle(wb, sheet_name, style_election_label, rows = row_num, cols = 1)
         } else {
-          addStyle(wb, sheet_name, style_summary_label, rows = row_num, cols = start_col)
+          addStyle(wb, sheet_name, style_summary_label, rows = row_num, cols = 1)
         }
 
         for (i in seq_along(value_cols)) {
-          col_letter <- col_to_letter(start_col + i)
           data_col_letter <- col_to_letter(i + 1)
 
           formula <- if (s == 1) {
@@ -902,16 +901,16 @@ build_payroll_sheet <- function(wb, sheet_name, title, data, source_info = NULL,
           }
 
           if (!is.null(formula) && formula != "") {
-            writeFormula(wb, sheet_name, formula, startRow = row_num, startCol = start_col + i)
+            writeFormula(wb, sheet_name, formula, startRow = row_num, startCol = i + 1)
           }
-          addStyle(wb, sheet_name, style_summary_value, rows = row_num, cols = start_col + i)
+          addStyle(wb, sheet_name, style_summary_value, rows = row_num, cols = i + 1)
         }
       }
     }
 
-    # TABLE 1: Single month (latest)
+    # TABLE 1: Single month (latest) - starts at row 5
     write_summary_table(
-      start_col = 1,
+      start_row = 5,
       table_title = lab_cur,
       current_formula_fn = function(col) {
         if (isTRUE(!is.na(row_cur))) paste0("=", col, row_cur) else ""
@@ -929,13 +928,12 @@ build_payroll_sheet <- function(wb, sheet_name, title, data, source_info = NULL,
       }
     )
 
-    # TABLE 2: 3-month average ending at latest (e.g., Oct-Nov-Dec)
-    table2_start <- n_cols + 3
+    # TABLE 2: 3-month average ending at latest (e.g., Oct-Nov-Dec) - starts at row 12
     table2_title <- paste0(format(anchor_date %m-% months(2), "%b"), "-",
                            format(anchor_date, "%b %Y"), " (3mo avg)")
 
     write_summary_table(
-      start_col = table2_start,
+      start_row = 12,
       table_title = table2_title,
       current_formula_fn = function(col) {
         rows_to_avg <- c(row_cur, row_m1, row_m2)
@@ -968,13 +966,12 @@ build_payroll_sheet <- function(wb, sheet_name, title, data, source_info = NULL,
       }
     )
 
-    # TABLE 3: 3-month average ending at previous month (e.g., Sep-Oct-Nov)
-    table3_start <- table2_start + n_cols + 2
+    # TABLE 3: 3-month average ending at previous month (e.g., Sep-Oct-Nov) - starts at row 19
     table3_title <- paste0(format(anchor_date %m-% months(3), "%b"), "-",
                            format(anchor_date %m-% months(1), "%b %Y"), " (3mo avg)")
 
     write_summary_table(
-      start_col = table3_start,
+      start_row = 19,
       table_title = table3_title,
       current_formula_fn = function(col) {
         rows_to_avg <- c(row_m1, row_m2, row_m3)
@@ -1007,21 +1004,10 @@ build_payroll_sheet <- function(wb, sheet_name, title, data, source_info = NULL,
       }
     )
 
-    # Column widths for all 3 tables
-    # TABLE 1: cols 1 to n_cols+1
+    # Column widths (all tables use same columns, stacked vertically)
     setColWidths(wb, sheet_name, cols = 1, widths = 35)
     for (i in seq_along(value_cols)) {
       setColWidths(wb, sheet_name, cols = i + 1, widths = 18)
-    }
-    # TABLE 2: starts at table2_start
-    setColWidths(wb, sheet_name, cols = table2_start, widths = 35)
-    for (i in seq_along(value_cols)) {
-      setColWidths(wb, sheet_name, cols = table2_start + i, widths = 18)
-    }
-    # TABLE 3: starts at table3_start
-    setColWidths(wb, sheet_name, cols = table3_start, widths = 35)
-    for (i in seq_along(value_cols)) {
-      setColWidths(wb, sheet_name, cols = table3_start + i, widths = 18)
     }
   }
 

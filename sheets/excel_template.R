@@ -136,148 +136,285 @@ fetch_db <- function(query) {
 # COLUMN NAME TO DATASET CODE MAPPINGS
 # ==============================================================================
 # Maps human-readable column names (in template) to dataset identifier codes
+# COMPLETE LIST - covers ALL codes from the database
+#
+# Structure: "Column Name in Excel" = "DATASET_CODE"
+# Multiple column name variations map to the same code for flexibility
 
+# ------------------------------------------------------------------------------
+# LFS DATA (labour_market__age_group)
+# Codes: MGRZ, LF24, MGSC, MGSX, LF2M, LF2S, LF2A, LF2W
+# ------------------------------------------------------------------------------
 LFS_COLUMN_MAP <- c(
-  # Employment
+  # MGRZ - Employment 16+ level (thousands)
+  "Employment 16+ (000s)" = "MGRZ",
   "Employment 16+" = "MGRZ",
   "Employment (000s) 16+" = "MGRZ",
   "Employment level" = "MGRZ",
+  "level" = "MGRZ",  # Generic from Sheet 2
 
-  # Employment rate
-  "Employment rate" = "LF24",
+  # LF24 - Employment rate 16-64 (%)
+  "Employment Rate 16-64 (%)" = "LF24",
   "Employment rate (16-64)" = "LF24",
+  "Employment rate" = "LF24",
   "Employment rate (%)" = "LF24",
+  "rate (%)" = "LF24",  # Generic from Sheet 2
 
-  # Unemployment
+  # MGSC - Unemployment 16+ level (thousands)
+  "Unemployment 16+ (000s)" = "MGSC",
   "Unemployment 16+" = "MGSC",
   "Unemployment (000s) 16+" = "MGSC",
   "Unemployment, 16+ (000s)" = "MGSC",
   "Unemployment level" = "MGSC",
 
-  # Unemployment rate
-  "Unemployment rate" = "MGSX",
+  # MGSX - Unemployment rate 16+ (%)
+  "Unemployment Rate 16+ (%)" = "MGSX",
   "Unemployment rate, 16+" = "MGSX",
+  "Unemployment rate" = "MGSX",
   "Unemployment rate (%)" = "MGSX",
 
-  # Inactivity 16-64
+  # LF2M - Inactivity 16-64 level (thousands)
+  "Inactivity 16-64 (000s)" = "LF2M",
   "Inactivity 16-64" = "LF2M",
   "Inactivity (000s) 16-64" = "LF2M",
   "Economic inactivity (000s) (16-64)" = "LF2M",
   "Inactivity level" = "LF2M",
+  "Total economically inactive aged 16-64 (thousands)4" = "LF2M",
 
-  # Inactivity rate 16-64
+  # LF2S - Inactivity rate 16-64 (%)
+  "Inactivity Rate 16-64 (%)" = "LF2S",
   "Inactivity rate 16-64" = "LF2S",
   "Economic inactivity rate (16-64)" = "LF2S",
   "Inactivity rate (%)" = "LF2S",
 
-  # Inactivity 50-64
+  # LF2A - Inactivity 50-64 level (thousands)
+  "Inactivity 50-64 (000s)" = "LF2A",
   "Inactivity 50-64" = "LF2A",
   "50-64s inactivity (000s)" = "LF2A",
 
-  # Inactivity rate 50-64
+  # LF2W - Inactivity rate 50-64 (%)
+  "Inactivity Rate 50-64 (%)" = "LF2W",
   "Inactivity rate 50-64" = "LF2W",
   "50-64s inactivity rate" = "LF2W"
 )
 
+# ------------------------------------------------------------------------------
+# VACANCIES (labour_market__vacancies_business)
+# Codes: AP2Y, AP3K
+# ------------------------------------------------------------------------------
 VACANCIES_COLUMN_MAP <- c(
-  "Vacancies" = "AP2Y",
+  # AP2Y - Vacancies level (thousands)
   "Vacancies (000s)" = "AP2Y",
+  "Vacancies" = "AP2Y",
   "Total vacancies" = "AP2Y",
-  "Quarterly change" = "AP3K",
-  "Quarterly Change (000s)" = "AP3K"
+
+  # AP3K - Quarterly change (thousands)
+  "Quarterly Change (000s)" = "AP3K",
+  "Quarterly change" = "AP3K"
 )
 
+# ------------------------------------------------------------------------------
+# WAGES TOTAL (labour_market__weekly_earnings_total)
+# Codes: KAB9, KAC3, KAC6, KAC9
+# ------------------------------------------------------------------------------
 WAGES_TOTAL_COLUMN_MAP <- c(
-  "AWE Total" = "KAB9",
+  # KAB9 - AWE Total weekly (£)
   "AWE Total (£/week)" = "KAB9",
+  "AWE Total" = "KAB9",
+  "Weekly Earnings     (£)" = "KAB9",
+  "Weekly Earnings (£)" = "KAB9",
   "Total pay" = "KAB9",
-  "AWE Total YoY" = "KAC3",
+
+  # KAC3 - AWE Total YoY growth (%)
   "AWE Total YoY (%)" = "KAC3",
+  "AWE Total YoY" = "KAC3",
+  "% changes year on year" = "KAC3",
   "Total pay growth" = "KAC3",
-  "AWE Total Private YoY" = "KAC6",
+
+  # KAC6 - AWE Total Private YoY (%)
   "AWE Total Private YoY (%)" = "KAC6",
-  "AWE Total Public YoY" = "KAC9",
-  "AWE Total Public YoY (%)" = "KAC9"
+  "AWE Total Private YoY" = "KAC6",
+
+  # KAC9 - AWE Total Public YoY (%)
+  "AWE Total Public YoY (%)" = "KAC9",
+  "AWE Total Public YoY" = "KAC9"
 )
 
+# ------------------------------------------------------------------------------
+# WAGES REGULAR (labour_market__weekly_earnings_regular)
+# Codes: KAI7, KAI9, KAJ4, KAJ7
+# ------------------------------------------------------------------------------
 WAGES_REGULAR_COLUMN_MAP <- c(
-  "AWE Regular" = "KAI7",
+  # KAI7 - AWE Regular weekly (£)
   "AWE Regular (£/week)" = "KAI7",
+  "AWE Regular" = "KAI7",
   "Regular pay" = "KAI7",
-  "AWE Regular YoY" = "KAI9",
+
+  # KAI9 - AWE Regular YoY growth (%)
   "AWE Regular YoY (%)" = "KAI9",
+  "AWE Regular YoY" = "KAI9",
   "Regular pay growth" = "KAI9",
-  "AWE Regular Private YoY" = "KAJ4",
+
+  # KAJ4 - AWE Regular Private YoY (%)
   "AWE Regular Private YoY (%)" = "KAJ4",
-  "AWE Regular Public YoY" = "KAJ7",
-  "AWE Regular Public YoY (%)" = "KAJ7"
+  "AWE Regular Private YoY" = "KAJ4",
+
+  # KAJ7 - AWE Regular Public YoY (%)
+  "AWE Regular Public YoY (%)" = "KAJ7",
+  "AWE Regular Public YoY" = "KAJ7"
 )
 
+# ------------------------------------------------------------------------------
+# INACTIVITY BY REASON (labour_market__inactivity)
+# Codes: LF63, LF65, LF67, LF69, LFL8, LF6B, LF6D
+# ------------------------------------------------------------------------------
 INACTIVITY_REASON_COLUMN_MAP <- c(
-  # From Sheet 11 column headers
+  # LF63 - Student
   "Student" = "LF63",
+
+  # LF65 - Looking after family/home
   "Looking after family / home" = "LF65",
   "Looking after family/home" = "LF65",
   "Family/Home" = "LF65",
+
+  # LF67 - Temporary sick
   "Temp sick" = "LF67",
   "Temporary sick" = "LF67",
   "Temp Sick" = "LF67",
+
+  # LF69 - Long-term sick
   "Long-term sick" = "LF69",
   "Long-term Sick" = "LF69",
+
+  # LFL8 - Discouraged workers
   "Discouraged workers1" = "LFL8",
   "Discouraged workers" = "LFL8",
   "Discouraged" = "LFL8",
+
+  # LF6B - Retired
   "Retired" = "LF6B",
+
+  # LF6D - Other
   "Other2" = "LF6D",
-  "Other" = "LF6D",
-  # Total column
-  "Total economically inactive aged 16-64 (thousands)4" = "LF2M"
+  "Other" = "LF6D"
 )
 
+# ------------------------------------------------------------------------------
+# REDUNDANCY (labour_market__redundancies)
+# Codes: BEIR
+# ------------------------------------------------------------------------------
 REDUNDANCY_COLUMN_MAP <- c(
+  # BEIR - Redundancy rate per 1000
+  "Redundancy Rate (per 1000)" = "BEIR",
   "Redundancy rate" = "BEIR",
-  "Redundancy Rate (per 1000)" = "BEIR"
+  "Rate per thousand2" = "BEIR",
+  "Rate per thousand" = "BEIR"
 )
 
+# ------------------------------------------------------------------------------
+# DAYS LOST (labour_market__disputes)
+# Codes: BBFW
+# ------------------------------------------------------------------------------
 DAYS_LOST_COLUMN_MAP <- c(
-  "Days lost" = "BBFW",
+  # BBFW - Working days lost (thousands)
   "Days Lost (000s)" = "BBFW",
+  "Days lost" = "BBFW",
   "Working days lost" = "BBFW"
 )
 
+# ------------------------------------------------------------------------------
+# INDUSTRY (labour_market__employees_industry)
+# Codes: A-S (SIC sections)
+# ------------------------------------------------------------------------------
 INDUSTRY_COLUMN_MAP <- c(
+  # A - Agriculture, forestry and fishing
   "Agriculture" = "A",
+  "A-Agriculture" = "A",
+
+  # B - Mining and quarrying
   "Mining" = "B",
+  "B-Mining" = "B",
+
+  # C - Manufacturing
   "Manufacturing" = "C",
+  "C-Manufacturing" = "C",
+
+  # D - Electricity, gas, steam
   "Electricity" = "D",
+  "D-Electricity" = "D",
+
+  # E - Water supply, sewerage
   "Water" = "E",
+  "E-Water" = "E",
+
+  # F - Construction
   "Construction" = "F",
+  "F-Construction" = "F",
+
+  # G - Wholesale and retail trade
   "Retail" = "G",
   "Wholesale and retail" = "G",
+  "G-Retail" = "G",
+
+  # H - Transportation and storage
   "Transport" = "H",
   "Transportation" = "H",
+  "H-Transport" = "H",
+
+  # I - Accommodation and food service
   "Hospitality" = "I",
   "Accommodation and food" = "I",
+  "I-Hospitality" = "I",
+
+  # J - Information and communication
   "IT" = "J",
   "Information and communication" = "J",
   "IT & Comms" = "J",
+  "J-IT & Comms" = "J",
+
+  # K - Financial and insurance
   "Finance" = "K",
   "Financial services" = "K",
+  "K-Finance" = "K",
+
+  # L - Real estate
   "Real Estate" = "L",
   "Real estate" = "L",
+  "L-Real Estate" = "L",
+
+  # M - Professional, scientific, technical
   "Professional" = "M",
   "Professional services" = "M",
+  "M-Professional" = "M",
+
+  # N - Administrative and support
   "Admin" = "N",
   "Administrative" = "N",
+  "N-Admin" = "N",
+
+  # O - Public administration and defence
   "Public Admin" = "O",
   "Public administration" = "O",
+  "O-Public Admin" = "O",
+
+  # P - Education
   "Education" = "P",
+  "P-Education" = "P",
+
+  # Q - Human health and social work
   "Health" = "Q",
   "Health and social" = "Q",
+  "Q-Health" = "Q",
+
+  # R - Arts, entertainment, recreation
   "Arts" = "R",
   "Arts and recreation" = "R",
+  "R-Arts" = "R",
+
+  # S - Other service activities
   "Other Services" = "S",
-  "Other services" = "S"
+  "Other services" = "S",
+  "S-Other Services" = "S"
 )
 
 # ==============================================================================
@@ -535,20 +672,19 @@ fill_source_data <- function(wb, sheet, source_data, column_map,
       next
     }
 
-    # PRIORITY 1: Check if header IS a dataset code directly (e.g., "MGRZ", "LF24")
-    # This allows ANY code from the database to work automatically
-    if (header_val %in% source_codes) {
-      dataset_code <- header_val
-    } else {
-      dataset_code <- NA
-    }
+    # Column headers are ALWAYS human-readable names
+    # We use the column_map to find the corresponding dataset code
+    dataset_code <- NA
 
-    # PRIORITY 2: Try column_map lookup (human-readable names)
-    if (is.na(dataset_code) && !is.null(column_map) && length(column_map) > 0) {
-      # Exact match
-      dataset_code <- column_map[header_val]
+    # Use column_map to translate column name -> dataset code
+    if (!is.null(column_map) && length(column_map) > 0) {
 
-      # Case-insensitive match
+      # 1. Exact match
+      if (header_val %in% names(column_map)) {
+        dataset_code <- column_map[header_val]
+      }
+
+      # 2. Case-insensitive match
       if (is.na(dataset_code)) {
         matching_names <- names(column_map)[tolower(names(column_map)) == tolower(header_val)]
         if (length(matching_names) > 0) {
@@ -556,11 +692,16 @@ fill_source_data <- function(wb, sheet, source_data, column_map,
         }
       }
 
-      # Partial match (header contains map key or vice versa)
+      # 3. Partial match (column name contains a mapped name or vice versa)
       if (is.na(dataset_code)) {
         for (map_name in names(column_map)) {
-          if (grepl(tolower(map_name), tolower(header_val), fixed = TRUE) ||
-              grepl(tolower(header_val), tolower(map_name), fixed = TRUE)) {
+          # Check if header contains the map name
+          if (grepl(map_name, header_val, fixed = TRUE, ignore.case = TRUE)) {
+            dataset_code <- column_map[map_name]
+            break
+          }
+          # Check if map name contains the header (for short headers)
+          if (nchar(header_val) >= 3 && grepl(header_val, map_name, fixed = TRUE, ignore.case = TRUE)) {
             dataset_code <- column_map[map_name]
             break
           }
@@ -568,15 +709,7 @@ fill_source_data <- function(wb, sheet, source_data, column_map,
       }
     }
 
-    # PRIORITY 3: Case-insensitive direct match against source codes
-    if (is.na(dataset_code)) {
-      matching_cols <- source_codes[tolower(source_codes) == tolower(header_val)]
-      if (length(matching_cols) > 0) {
-        dataset_code <- matching_cols[1]
-      }
-    }
-
-    # Skip if still no match
+    # Skip if no match found in column_map
     if (is.na(dataset_code)) {
       next
     }

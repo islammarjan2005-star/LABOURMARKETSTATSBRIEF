@@ -767,6 +767,258 @@ build_data_sheet <- function(wb, sheet_name, title, data, source_info = NULL,
 }
 
 # ==============================================================================
+# BUILD PAYROLL SHEET WITH 3 SUMMARY TABLES
+# ==============================================================================
+# Table 1: Current = latest month (e.g., December)
+# Table 2: Current = 3-month average ending at latest (Oct-Nov-Dec)
+# Table 3: Current = 3-month average ending at previous month (Sep-Oct-Nov)
+
+build_payroll_sheet <- function(wb, sheet_name, title, data, source_info = NULL,
+                                anchor_date = NULL, covid_label = "February 2020",
+                                election_label = "June 2024") {
+
+  addWorksheet(wb, sheet_name)
+
+  if (is.null(data) || nrow(data) == 0) {
+    writeData(wb, sheet_name, "No data available", startRow = 1, startCol = 1)
+    return(wb)
+  }
+
+  # Title section
+  writeData(wb, sheet_name, title, startRow = 1, startCol = 1)
+  addStyle(wb, sheet_name, style_title, rows = 1, cols = 1)
+
+  if (!is.null(source_info)) {
+    writeData(wb, sheet_name, paste("Source:", source_info), startRow = 2, startCol = 1)
+    addStyle(wb, sheet_name, style_subtitle, rows = 2, cols = 1)
+  }
+
+  writeData(wb, sheet_name, paste("Rows:", nrow(data), "| Generated:", format(Sys.time(), "%d %B %Y %H:%M")),
+            startRow = 3, startCol = 1)
+  addStyle(wb, sheet_name, style_subtitle, rows = 3, cols = 1)
+
+  value_cols <- setdiff(names(data), "Date")
+  n_cols <- length(value_cols)
+
+  # Data table starts lower to make room for 3 summary tables
+  data_start <- 15
+
+  writeData(wb, sheet_name, "Source Data", startRow = data_start - 1, startCol = 1)
+  addStyle(wb, sheet_name, createStyle(textDecoration = "bold", fontSize = 11), rows = data_start - 1, cols = 1)
+
+  writeData(wb, sheet_name, data, startRow = data_start, startCol = 1,
+            colNames = TRUE, headerStyle = style_data_header)
+
+  # Summary section with 3 tables
+  summary_start <- 5
+  can_calc_summary <- !is.null(anchor_date)
+
+  if (can_calc_summary) {
+    # Generate month labels
+    lab_cur <- make_payroll_label(anchor_date)
+    lab_m1 <- make_payroll_label(anchor_date %m-% months(1))
+    lab_m2 <- make_payroll_label(anchor_date %m-% months(2))
+    lab_m3 <- make_payroll_label(anchor_date %m-% months(3))
+    lab_m4 <- make_payroll_label(anchor_date %m-% months(4))
+
+    # Comparison labels
+    lab_q <- make_payroll_label(anchor_date %m-% months(3))
+    lab_y <- make_payroll_label(anchor_date %m-% months(12))
+    lab_covid <- covid_label
+    lab_election <- election_label
+
+    # For 3-month averages, need comparison periods
+    lab_q_m1 <- make_payroll_label(anchor_date %m-% months(4))
+    lab_q_m2 <- make_payroll_label(anchor_date %m-% months(5))
+    lab_y_m1 <- make_payroll_label(anchor_date %m-% months(13))
+    lab_y_m2 <- make_payroll_label(anchor_date %m-% months(14))
+
+    # Find data rows
+    find_data_row <- function(label) {
+      idx <- which(trimws(data$Date) == trimws(label))
+      if (length(idx) > 0) return(idx[1])
+      idx <- which(startsWith(trimws(data$Date), trimws(label)))
+      if (length(idx) > 0) return(idx[1])
+      NA
+    }
+
+    to_excel_row <- function(data_idx) {
+      if (is.na(data_idx)) return(NA)
+      data_start + data_idx
+    }
+
+    # Find all needed rows
+    row_cur <- to_excel_row(find_data_row(lab_cur))
+    row_m1 <- to_excel_row(find_data_row(lab_m1))
+    row_m2 <- to_excel_row(find_data_row(lab_m2))
+    row_m3 <- to_excel_row(find_data_row(lab_m3))
+    row_m4 <- to_excel_row(find_data_row(lab_m4))
+    row_q <- to_excel_row(find_data_row(lab_q))
+    row_q_m1 <- to_excel_row(find_data_row(lab_q_m1))
+    row_q_m2 <- to_excel_row(find_data_row(lab_q_m2))
+    row_y <- to_excel_row(find_data_row(lab_y))
+    row_y_m1 <- to_excel_row(find_data_row(lab_y_m1))
+    row_y_m2 <- to_excel_row(find_data_row(lab_y_m2))
+    row_covid <- to_excel_row(find_data_row(lab_covid))
+    row_election <- to_excel_row(find_data_row(lab_election))
+
+    # Helper to write a summary table
+    write_summary_table <- function(start_col, table_title, current_formula_fn, compare_formula_fn) {
+      # Header
+      writeData(wb, sheet_name, table_title, startRow = summary_start, startCol = start_col)
+      for (i in seq_along(value_cols)) {
+        writeData(wb, sheet_name, value_cols[i], startRow = summary_start, startCol = start_col + i)
+      }
+      addStyle(wb, sheet_name, style_summary_header, rows = summary_start,
+               cols = start_col:(start_col + n_cols), gridExpand = TRUE)
+
+      # Row labels
+      row_labels <- c(
+        paste0("Current (", table_title, ")"),
+        paste0("Change on quarter"),
+        paste0("Change on year"),
+        paste0("Change since Covid"),
+        paste0("Change since election")
+      )
+
+      for (s in 1:5) {
+        row_num <- summary_start + s
+        writeData(wb, sheet_name, row_labels[s], startRow = row_num, startCol = start_col)
+
+        if (s == 5) {
+          addStyle(wb, sheet_name, style_election_label, rows = row_num, cols = start_col)
+        } else {
+          addStyle(wb, sheet_name, style_summary_label, rows = row_num, cols = start_col)
+        }
+
+        for (i in seq_along(value_cols)) {
+          col_letter <- col_to_letter(start_col + i)
+          data_col_letter <- col_to_letter(i + 1)
+
+          formula <- if (s == 1) {
+            current_formula_fn(data_col_letter)
+          } else {
+            compare_formula_fn(data_col_letter, s)
+          }
+
+          if (!is.null(formula) && formula != "") {
+            writeFormula(wb, sheet_name, formula, startRow = row_num, startCol = start_col + i)
+          }
+          addStyle(wb, sheet_name, style_summary_value, rows = row_num, cols = start_col + i)
+        }
+      }
+    }
+
+    # TABLE 1: Single month (latest)
+    write_summary_table(
+      start_col = 1,
+      table_title = lab_cur,
+      current_formula_fn = function(col) {
+        if (!is.na(row_cur)) paste0("=", col, row_cur) else ""
+      },
+      compare_formula_fn = function(col, row_type) {
+        comp_row <- switch(row_type,
+          "2" = row_q,
+          "3" = row_y,
+          "4" = row_covid,
+          "5" = row_election
+        )
+        if (!is.na(row_cur) && !is.na(comp_row)) {
+          paste0("=", col, row_cur, "-", col, comp_row)
+        } else ""
+      }
+    )
+
+    # TABLE 2: 3-month average ending at latest (e.g., Oct-Nov-Dec)
+    table2_start <- n_cols + 3
+    table2_title <- paste0(format(anchor_date %m-% months(2), "%b"), "-",
+                           format(anchor_date, "%b %Y"), " (3mo avg)")
+
+    write_summary_table(
+      start_col = table2_start,
+      table_title = table2_title,
+      current_formula_fn = function(col) {
+        rows_to_avg <- c(row_cur, row_m1, row_m2)
+        rows_to_avg <- rows_to_avg[!is.na(rows_to_avg)]
+        if (length(rows_to_avg) > 0) {
+          refs <- paste0(col, rows_to_avg, collapse = ",")
+          paste0("=AVERAGE(", refs, ")")
+        } else ""
+      },
+      compare_formula_fn = function(col, row_type) {
+        # Current 3mo avg
+        cur_rows <- c(row_cur, row_m1, row_m2)
+        cur_rows <- cur_rows[!is.na(cur_rows)]
+
+        # Comparison 3mo avg
+        comp_rows <- switch(row_type,
+          "2" = c(row_q, row_q_m1, row_q_m2),
+          "3" = c(row_y, row_y_m1, row_y_m2),
+          "4" = c(row_covid),  # Single month for covid/election
+          "5" = c(row_election)
+        )
+        comp_rows <- comp_rows[!is.na(comp_rows)]
+
+        if (length(cur_rows) > 0 && length(comp_rows) > 0) {
+          cur_refs <- paste0(col, cur_rows, collapse = ",")
+          comp_refs <- paste0(col, comp_rows, collapse = ",")
+          paste0("=AVERAGE(", cur_refs, ")-AVERAGE(", comp_refs, ")")
+        } else ""
+      }
+    )
+
+    # TABLE 3: 3-month average ending at previous month (e.g., Sep-Oct-Nov)
+    table3_start <- table2_start + n_cols + 2
+    table3_title <- paste0(format(anchor_date %m-% months(3), "%b"), "-",
+                           format(anchor_date %m-% months(1), "%b %Y"), " (3mo avg)")
+
+    write_summary_table(
+      start_col = table3_start,
+      table_title = table3_title,
+      current_formula_fn = function(col) {
+        rows_to_avg <- c(row_m1, row_m2, row_m3)
+        rows_to_avg <- rows_to_avg[!is.na(rows_to_avg)]
+        if (length(rows_to_avg) > 0) {
+          refs <- paste0(col, rows_to_avg, collapse = ",")
+          paste0("=AVERAGE(", refs, ")")
+        } else ""
+      },
+      compare_formula_fn = function(col, row_type) {
+        # Current 3mo avg (prev month)
+        cur_rows <- c(row_m1, row_m2, row_m3)
+        cur_rows <- cur_rows[!is.na(cur_rows)]
+
+        # Comparison - shift by 1 month
+        comp_rows <- switch(row_type,
+          "2" = c(row_q_m1, row_q_m2, to_excel_row(find_data_row(make_payroll_label(anchor_date %m-% months(6))))),
+          "3" = c(row_y_m1, row_y_m2, to_excel_row(find_data_row(make_payroll_label(anchor_date %m-% months(15))))),
+          "4" = c(row_covid),
+          "5" = c(row_election)
+        )
+        comp_rows <- comp_rows[!is.na(comp_rows)]
+
+        if (length(cur_rows) > 0 && length(comp_rows) > 0) {
+          cur_refs <- paste0(col, cur_rows, collapse = ",")
+          comp_refs <- paste0(col, comp_rows, collapse = ",")
+          paste0("=AVERAGE(", cur_refs, ")-AVERAGE(", comp_refs, ")")
+        } else ""
+      }
+    )
+  }
+
+  # Column widths
+  setColWidths(wb, sheet_name, cols = 1, widths = 35)
+  for (i in seq_along(value_cols)) {
+    setColWidths(wb, sheet_name, cols = i + 1, widths = 18)
+  }
+
+  freezePane(wb, sheet_name, firstRow = TRUE, firstActiveRow = data_start + 1)
+  addFilter(wb, sheet_name, row = data_start, cols = 1:ncol(data))
+
+  wb
+}
+
+# ==============================================================================
 # MAIN FUNCTION - CREATE COMPLETE WORKBOOK
 # ==============================================================================
 
@@ -824,12 +1076,13 @@ create_audit_workbook <- function(output_path,
                          covid_label = "Dec-Feb 2020", election_label = "Apr-Jun 2024")
 
   # 3. PAYROLL (Sheet "1. Payrolled employees (UK)" equivalent)
+  # Uses special function with 3 summary tables: single month + two 3-month averages
   if (verbose) message("Building: 1. Payrolled employees (UK)...")
   data <- tryCatch(fetch_payroll_wide(), error = function(e) tibble())
-  wb <- build_data_sheet(wb, "1. Payrolled employees (UK)", "Payrolled Employees",
-                         data, "labour_market__payrolled_employees",
-                         label_type = "payroll", anchor_date = payroll_anchor,
-                         covid_label = "February 2020", election_label = "June 2024")
+  wb <- build_payroll_sheet(wb, "1. Payrolled employees (UK)", "Payrolled Employees",
+                            data, "labour_market__payrolled_employees",
+                            anchor_date = payroll_anchor,
+                            covid_label = "February 2020", election_label = "June 2024")
 
   # 4. INDUSTRY (Sheet "23. Employees Industry" equivalent)
   if (verbose) message("Building: 23. Employees Industry...")

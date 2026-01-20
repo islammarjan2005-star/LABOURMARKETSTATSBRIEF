@@ -200,6 +200,21 @@ make_datetime_label <- function(date) {
 }
 
 # ==============================================================================
+# EXCEL COLUMN LETTER HELPER
+# ==============================================================================
+# Converts column number to Excel letter (1=A, 26=Z, 27=AA, 28=AB, etc.)
+
+col_to_letter <- function(col_num) {
+  result <- ""
+  while (col_num > 0) {
+    remainder <- (col_num - 1) %% 26
+    result <- paste0(LETTERS[remainder + 1], result)
+    col_num <- (col_num - 1) %/% 26
+  }
+  result
+}
+
+# ==============================================================================
 # CHRONOLOGICAL SORT HELPER
 # ==============================================================================
 
@@ -720,7 +735,7 @@ build_data_sheet <- function(wb, sheet_name, title, data, source_info = NULL,
       }
 
       for (i in seq_along(value_cols)) {
-        col_letter <- LETTERS[i + 1]
+        col_letter <- col_to_letter(i + 1)
 
         if (sr$is_current) {
           if (!is.na(excel_row_cur)) {

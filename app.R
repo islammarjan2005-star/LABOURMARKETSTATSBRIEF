@@ -763,28 +763,49 @@ server <- function(input, output, session) {
       "LM_Stats_Audit.xlsx"
     },
     content = function(file) {
+      # Use tryCatch to ensure errors are caught and reported
+      tryCatch({
+        withProgress(message = "Generating Excel Workbook", value = 0, {
 
-      withProgress(message = "Generating Excel Workbook", value = 0, {
+          incProgress(0.1, detail = "Step 1/4: Loading openxlsx...")
+          if (!requireNamespace("openxlsx", quietly = TRUE)) {
+            stop("openxlsx package not installed")
+          }
 
-        incProgress(0.2, detail = "Loading excel_audit.R...")
-        source("sheets/excel_audit.R", local = FALSE)
+          incProgress(0.2, detail = "Step 2/4: Loading excel_audit.R...")
+          source("sheets/excel_audit.R", local = FALSE)
 
-        incProgress(0.5, detail = "Building workbook...")
+          incProgress(0.5, detail = "Step 3/4: Building workbook (this may take a moment)...")
 
-        # Create LM_Stats_Audit.xlsx in project directory
-        create_audit_workbook(
-          output_path = "LM_Stats_Audit.xlsx",
-          calculations_path = "utils/calculations.R",
-          config_path = "utils/config.R",
-          verbose = FALSE
-        )
+          # Write directly to the Shiny download file location
+          create_audit_workbook(
+            output_path = file,
+            calculations_path = calculations_path,
+            config_path = config_path,
+            verbose = FALSE
+          )
 
-        incProgress(0.2, detail = "Copying to download...")
+          incProgress(0.2, detail = "Step 4/4: Finalising...")
+        })
 
-        # Copy to Shiny download location
-        file.copy("LM_Stats_Audit.xlsx", file, overwrite = TRUE)
+        # Verify the file was actually created
+        if (!file.exists(file)) {
+          stop("Excel workbook file was not created")
+        }
 
-        incProgress(0.1, detail = "Done!")
+        showNotification("Excel workbook generated!", type = "message", duration = 3)
+
+      }, error = function(e) {
+        # On error, create a simple workbook with error message
+        message("Excel download error: ", e$message)
+        showNotification(paste("Excel error:", e$message), type = "error", duration = 5)
+        wb <- openxlsx::createWorkbook()
+        openxlsx::addWorksheet(wb, "Error")
+        openxlsx::writeData(wb, "Error", data.frame(
+          Error = paste("Failed to generate workbook:", e$message),
+          Suggestion = "Please check database connection and try again."
+        ))
+        openxlsx::saveWorkbook(wb, file, overwrite = TRUE)
       })
     }
   )

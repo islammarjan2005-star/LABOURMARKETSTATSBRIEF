@@ -764,79 +764,35 @@ server <- function(input, output, session) {
     },
     content = function(file) {
 
-      # Load openxlsx first - we need it for error handling fallback
       library(openxlsx)
 
-      # Create temp output file (avoids issues with Shiny's temp file path)
-      temp_xlsx <- tempfile(fileext = ".xlsx")
+      # Output file in project directory (known working location)
+      output_xlsx <- "LM_Stats_Output.xlsx"
 
-      tryCatch({
+      withProgress(message = "Generating Excel Workbook", value = 0, {
 
-        withProgress(message = "Generating Excel Workbook", value = 0, {
+        incProgress(0.2, detail = "Loading excel_audit.R...")
+        source("sheets/excel_audit.R", local = FALSE)
 
-          incProgress(0.1, detail = "Loading excel_audit.R...")
+        incProgress(0.3, detail = "Building workbook...")
 
-          # Source excel_audit.R from the app directory
-          source("sheets/excel_audit.R", local = FALSE)
+        # Create the workbook in project directory
+        create_audit_workbook(
+          output_path = output_xlsx,
+          calculations_path = "utils/calculations.R",
+          config_path = "utils/config.R",
+          verbose = FALSE
+        )
 
-          incProgress(0.2, detail = "Preparing configuration...")
+        incProgress(0.4, detail = "Preparing download...")
 
-          # Handle month override
-          cm <- confirmed_month()
-          month_to_use <- if (!is.null(cm)) cm else if (nzchar(input$manual_month)) tolower(input$manual_month) else NULL
+        # Read the created file and write to Shiny's download location
+        file.copy(output_xlsx, file, overwrite = TRUE)
 
-          config_to_use <- "utils/config.R"
-
-          if (!is.null(month_to_use)) {
-            # Create temp config with month override
-            temp_config <- tempfile(fileext = ".R")
-            config_lines <- readLines("utils/config.R")
-            config_lines <- gsub('manual_month\\s*<-\\s*"[^"]*"',
-                                 paste0('manual_month <- "', month_to_use, '"'),
-                                 config_lines)
-            config_lines <- gsub('manual_month_hr1\\s*<-\\s*"[^"]*"',
-                                 paste0('manual_month_hr1 <- "', month_to_use, '"'),
-                                 config_lines)
-            writeLines(config_lines, temp_config)
-            config_to_use <- temp_config
-          }
-
-          incProgress(0.3, detail = "Running calculations...")
-
-          incProgress(0.3, detail = "Building workbook...")
-
-          # Call create_audit_workbook - write to our temp file
-          create_audit_workbook(
-            output_path = temp_xlsx,
-            calculations_path = "utils/calculations.R",
-            config_path = config_to_use,
-            verbose = FALSE
-          )
-
-          incProgress(0.1, detail = "Finalizing...")
-        })
-
-        # Copy temp file to download location
-        file.copy(temp_xlsx, file, overwrite = TRUE)
-        showNotification("Excel workbook generated!", type = "message", duration = 3)
-
-      }, error = function(e) {
-        # On error, create an error workbook
-        showNotification(paste("Error:", e$message), type = "error", duration = 10)
-
-        wb <- createWorkbook()
-        addWorksheet(wb, "Error")
-        writeData(wb, "Error", data.frame(
-          Error = e$message,
-          Time = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
-          WorkingDir = getwd()
-        ))
-        saveWorkbook(wb, file, overwrite = TRUE)
-
-      }, finally = {
-        # Clean up temp file
-        if (file.exists(temp_xlsx)) unlink(temp_xlsx)
+        incProgress(0.1, detail = "Done!")
       })
+
+      showNotification("Excel workbook downloaded!", type = "message", duration = 3)
     }
   )
 

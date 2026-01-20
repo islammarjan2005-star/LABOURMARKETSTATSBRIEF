@@ -1,7 +1,7 @@
 # Reference months - CHANGE THESE FOR EACH RELEASE
 
 manual_month <- "dec2025"
-
+manual_month_hr1 <- "dec2025"
 
 manual_month <- tolower(manual_month)
 manual_month_hr1 <- tolower(manual_month_hr1)

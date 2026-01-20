@@ -696,7 +696,7 @@ build_data_sheet <- function(wb, sheet_name, title, data, source_info = NULL,
     row_election <- find_data_row(lab_election)
 
     to_excel_row <- function(data_idx) {
-      if (is.na(data_idx)) return(NA)
+      if (is.null(data_idx) || length(data_idx) == 0 || is.na(data_idx)) return(NA)
       data_start + data_idx
     }
 
@@ -843,7 +843,7 @@ build_payroll_sheet <- function(wb, sheet_name, title, data, source_info = NULL,
     }
 
     to_excel_row <- function(data_idx) {
-      if (is.na(data_idx)) return(NA)
+      if (is.null(data_idx) || length(data_idx) == 0 || is.na(data_idx)) return(NA)
       data_start + data_idx
     }
 
@@ -914,7 +914,7 @@ build_payroll_sheet <- function(wb, sheet_name, title, data, source_info = NULL,
       start_col = 1,
       table_title = lab_cur,
       current_formula_fn = function(col) {
-        if (!is.na(row_cur)) paste0("=", col, row_cur) else ""
+        if (isTRUE(!is.na(row_cur))) paste0("=", col, row_cur) else ""
       },
       compare_formula_fn = function(col, row_type) {
         comp_row <- switch(as.character(row_type),
@@ -923,7 +923,7 @@ build_payroll_sheet <- function(wb, sheet_name, title, data, source_info = NULL,
           "4" = row_covid,
           "5" = row_election
         )
-        if (!is.null(comp_row) && !is.na(row_cur) && !is.na(comp_row)) {
+        if (isTRUE(!is.na(row_cur)) && isTRUE(!is.na(comp_row))) {
           paste0("=", col, row_cur, "-", col, comp_row)
         } else ""
       }
